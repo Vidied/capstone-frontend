@@ -6,7 +6,7 @@ import {
 import { jwtDecode } from "jwt-decode";
 import type { Role, User } from "../../interfaces/User";
 import type { AuthResponse, LoginDTO } from "../../interfaces/Auth";
-import API from "../../api/axiosConfig.ts";
+import API from "../../api/axiosConfig";
 import { AxiosError } from "axios";
 
 interface JwtPayLoadCustom {
@@ -28,7 +28,7 @@ interface AuthState {
   error: string | null;
 }
 
-const decondeToken = (token: string): User | null => {
+const decodeToken = (token: string): User | null => {
   try {
     const parsed = jwtDecode<JwtPayLoadCustom>(token);
 
@@ -46,7 +46,7 @@ const decondeToken = (token: string): User | null => {
 };
 
 const initialToken = localStorage.getItem("token");
-const initialUser = initialToken ? decondeToken(initialToken) : null;
+const initialUser = initialToken ? decodeToken(initialToken) : null;
 
 const initialState: AuthState = {
   user: initialUser,
@@ -102,7 +102,7 @@ export const authSlice = createSlice({
           state.loading = false;
           state.token = action.payload.accessToken;
           state.isAuthenticated = true;
-          state.user = decondeToken(action.payload.accessToken);
+          state.user = decodeToken(action.payload.accessToken);
           localStorage.setItem("token", action.payload.accessToken);
         },
       )
