@@ -32,7 +32,7 @@ export const LoginPage = () => {
   };
 
   return (
-    <Container>
+    <Container className="bg-dark">
       {error && (
         <Alert
           variant="danger"
@@ -67,9 +67,11 @@ export const LoginPage = () => {
         </Form.Group>
         <Button variant="primary" type="submit" disabled={loading}>
           {loading ? (
-            <Spinner animation="border" size="sm" className="me-2">
-              Autenticazione in corso...
-            </Spinner>
+            <Spinner
+              animation="border"
+              size="sm"
+              className="me-2, justify-content-center"
+            ></Spinner>
           ) : (
             "Accedi"
           )}
