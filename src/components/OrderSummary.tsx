@@ -23,6 +23,11 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     0,
   );
 
+  //Controllo per la validità del form, in caso non sia valido il  pulsante di invio rimane disabilitato
+  const isTableValid =
+    orderType === "ASPORTO" ||
+    (orderType === "TAVOLO" && tableNumber.trim() != "");
+  const isFormValid = cart.length > 0 && isTableValid;
   return (
     <Card
       className="bg-dark text-white border-secondary sticky-top"
@@ -33,7 +38,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
       </Card.Header>
 
       <Card.Body>
-        {/* 1. Selezione Tipo Comanda */}
         <Form className="mb-3">
           <Form.Group className="mb-3">
             <Form.Label className="small text-muted fw-semibold">
@@ -63,7 +67,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             </div>
           </Form.Group>
 
-          {/* 2. Dettagli Tavolo e Coperti */}
           {orderType === "TAVOLO" && (
             <div className="row g-2 mb-3">
               <div className="col-6">
@@ -74,6 +77,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   type="number"
                   placeholder="Es. 5"
                   value={tableNumber}
+                  isInvalid={orderType === "TAVOLO" && !tableNumber.trim()}
                   onChange={(e) => onTableNumberChange(e.target.value)}
                   className="bg-dark text-white border-secondary"
                 />
@@ -89,11 +93,13 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   onChange={(e) => onCoverCountChange(e.target.value)}
                   className="bg-dark text-white border-secondary"
                 />
+                <Form.Control.Feedback type="invalid">
+                  Inserisci il numero del tavolo.
+                </Form.Control.Feedback>
               </div>
             </div>
           )}
 
-          {/* 3. Note generali */}
           <Form.Group className="mb-2">
             <Form.Label className="small text-muted fw-semibold">
               Note Ordine (Opzionali)
@@ -111,7 +117,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
         <hr className="border-secondary" />
 
-        {/* 4. Lista dei piatti nel Carrello */}
         {cart.length === 0 ? (
           <p className="text-muted text-center py-4 my-0">
             Nessun piatto inserito in comanda.
@@ -177,7 +182,6 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
         <hr className="border-secondary" />
 
-        {/* 5. Totale e Pulsante Invio */}
         <div className="d-flex justify-content-between align-items-center mb-3">
           <span className="h5 mb-0">Totale:</span>
           <span className="h4 mb-0 text-success fw-bold">
@@ -189,7 +193,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
           variant="success"
           size="lg"
           className="w-100 fw-bold"
-          disabled={cart.length === 0 || isSubmitting}
+          disabled={!isFormValid || isSubmitting}
           onClick={onSubmitOrder}
         >
           {isSubmitting ? "Invio in corso..." : "Invia Comanda"}
