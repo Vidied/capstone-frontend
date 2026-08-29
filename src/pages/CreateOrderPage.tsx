@@ -15,6 +15,7 @@ import {
   type Product,
 } from "../features/menu/productSlice";
 import type { CartItem, OrderRequestDTO, OrderType } from "../interfaces/Order";
+import { useDebounce } from "../app/hooks";
 
 export const CreateOrderPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -35,6 +36,7 @@ export const CreateOrderPage: React.FC = () => {
   const [generalNotes, setGeneralNotes] = useState<string>("");
 
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedCategory, setSelectedCategory] = useState<string>("TUTTI");
 
   useEffect(() => {
@@ -126,7 +128,7 @@ export const CreateOrderPage: React.FC = () => {
 
   // Filtro che restituisce prodotti che matchano parte del nome o almeno uno dei ingredienti alla query della ricerca
   const filteredProducts = products.filter((p) => {
-    const query = searchQuery.toLocaleLowerCase();
+    const query = debouncedSearchQuery.toLocaleLowerCase();
 
     const matchName = p.name.toLowerCase().includes(query);
     const matchIngredients = p.ingredientNames?.some((ingredients) =>
