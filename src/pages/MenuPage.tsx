@@ -6,6 +6,7 @@ import { CategoryFilter } from "../components/CategoryFilter";
 import { SearchBar } from "../components/SearchBar";
 import { Alert, Container, Spinner } from "react-bootstrap";
 import { ProductCard } from "../components/ProductCard";
+import { Link } from "react-router-dom";
 
 export const MenuPage = () => {
   const dispatch = useAppDispatch();
@@ -63,6 +64,9 @@ export const MenuPage = () => {
 
   return (
     <Container>
+      <div>
+        <Link to="/create-order">Crea comanda</Link>
+      </div>
       <div>
         <CategoryFilter
           categories={categories}

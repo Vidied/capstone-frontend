@@ -13,6 +13,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  isAvailable: boolean;
   category: Category;
   ingredients?: Ingredient[]; //Per le bevande si crea semplicemente un product senza ingredienti, per questo motivo gli ingredienti non sono obbligatori
 }
