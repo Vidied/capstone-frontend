@@ -46,6 +46,31 @@ export const createOrderThunk = createAsyncThunk<
   }
 });
 
+export const updateOrderThunk = createAsyncThunk<
+  Order,
+  { orderId: number; orderPayload: OrderRequestDTO },
+  { rejectValue: string }
+>(
+  "order/updateOrder",
+  async ({ orderId, orderPayload }, { rejectWithValue }) => {
+    try {
+      const response = await API.put<Order>(`/orders/${orderId}`, orderPayload);
+      return response.data;
+    } catch (err) {
+      if (err instanceof AxiosError) {
+        const backendMessage =
+          typeof err.response?.data === "string"
+            ? err.response.data
+            : err.response?.data?.message;
+        return rejectWithValue(
+          backendMessage || "Impossibile modificare l'ordine",
+        );
+      }
+      return rejectWithValue("Errore di connessione al server");
+    }
+  },
+);
+
 export const updateOrderStatusThunk = createAsyncThunk<
   Order,
   { orderId: number; status: OrderStatus },
@@ -150,6 +175,25 @@ const orderSlice = createSlice({
         if (index !== -1) {
           state.orders[index] = updatedOrder;
         }
+      })
+      .addCase(updateOrderThunk.pending, (state) => {
+        state.isSubmitting = true;
+        state.error = null;
+        state.successMessage = null;
+      })
+      .addCase(updateOrderThunk.fulfilled, (state, action) => {
+        state.isSubmitting = false;
+        const updatedOrder = action.payload;
+        const index = state.orders.findIndex((o) => o.id === updatedOrder.id);
+        if (index !== -1) {
+          state.orders[index] = updatedOrder;
+        }
+        state.successMessage = "Comanda modificata con successo";
+      })
+      .addCase(updateOrderThunk.rejected, (state, action) => {
+        state.isSubmitting = false;
+        state.error =
+          action.payload || "Errore durante la modifica dell'ordine";
       });
   },
 });
