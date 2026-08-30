@@ -1,11 +1,19 @@
+import type { Variant } from "react-bootstrap/esm/types";
 import type { Product } from "../features/menu/productSlice";
 
-export type OrderStatus =
-  | "PENDING"
-  | "IN_PROGRESS"
-  | "SERVED"
-  | "COMPLETED"
-  | "CANCELLED";
+export const ALL_ORDER_STATUSES = [
+  "ATTIVI",
+  "PENDING",
+  "PREPARATION",
+  "READY",
+  "SERVED",
+  "COMPLETED",
+  "CANCELLED",
+] as const;
+
+export type OrderStatusAttivi = (typeof ALL_ORDER_STATUSES)[number];
+
+export type OrderStatus = Exclude<OrderStatusAttivi, "ATTIVI">;
 
 export type OrderType = "TAVOLO" | "ASPORTO";
 
@@ -69,3 +77,29 @@ export interface OrderSummaryProps {
   onSubmitOrder: () => void;
   isSubmitting: boolean;
 }
+
+const BADGE_VARIANTS: Record<OrderStatus, Variant> = {
+  PENDING: "warning",
+  PREPARATION: "primary",
+  READY: "info",
+  SERVED: "secondary",
+  COMPLETED: "success",
+  CANCELLED: "danger",
+};
+
+export const getBadgeVariant = (status: OrderStatus): Variant => {
+  return BADGE_VARIANTS[status] ?? "secondary";
+};
+//Label per i vari stati della preparazione per avere una UI migliore
+const NEXT_STATUS_LABELS: Record<OrderStatus, string> = {
+  PENDING: "Inizia Preparazione",
+  PREPARATION: "Pronto per la Sala (READY)",
+  READY: "Segna come Servito",
+  SERVED: "Incassa (COMPLETED)",
+  COMPLETED: "Avanza Stato",
+  CANCELLED: "Avanza Stato",
+};
+
+export const getNextStatusLabel = (status: OrderStatus): string => {
+  return NEXT_STATUS_LABELS[status] ?? "Avanza Stato";
+};

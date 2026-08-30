@@ -3,6 +3,7 @@ import "./App.css";
 import { LoginPage } from "./pages/LoginPage";
 import { MenuPage } from "./pages/MenuPage";
 import { CreateOrderPage } from "./pages/CreateOrderPage";
+import { OrdersListPage } from "./pages/OrderListPage";
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/menu" element={<MenuPage />} />
         <Route path="/create-order" element={<CreateOrderPage />} />
+        <Route path="/order-list" element={<OrdersListPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
