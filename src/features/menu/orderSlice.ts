@@ -138,6 +138,18 @@ const orderSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(fetchOrderThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchOrderThunk.fulfilled, (state, action) => {
+        state.loading = false;
+        state.orders = action.payload;
+      })
+      .addCase(fetchOrderThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Errore sconosciuto";
+      })
       .addCase(createOrderThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -152,37 +164,7 @@ const orderSlice = createSlice({
         state.loading = false;
         state.error = action.payload || "Errore sconosciuto";
       })
-      .addCase(fetchOrderThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchOrderThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.orders = action.payload;
-      })
-      .addCase(fetchOrderThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || "Errore sconosciuto";
-      })
-      .addCase(updateOrderStatusThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || "Errore sconosciuto";
-      })
-      .addCase(updateOrderStatusThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        const updatedOrder = action.payload;
-        const index = state.orders.findIndex((o) => o.id === updatedOrder.id);
-        if (index !== -1) {
-          state.orders[index] = updatedOrder;
-        }
-      })
-      .addCase(updateOrderThunk.pending, (state) => {
-        state.isSubmitting = true;
-        state.error = null;
-        state.successMessage = null;
-      })
       .addCase(updateOrderThunk.fulfilled, (state, action) => {
-        state.isSubmitting = false;
         const updatedOrder = action.payload;
         const index = state.orders.findIndex((o) => o.id === updatedOrder.id);
         if (index !== -1) {
@@ -190,10 +172,12 @@ const orderSlice = createSlice({
         }
         state.successMessage = "Comanda modificata con successo";
       })
-      .addCase(updateOrderThunk.rejected, (state, action) => {
-        state.isSubmitting = false;
-        state.error =
-          action.payload || "Errore durante la modifica dell'ordine";
+      .addCase(updateOrderStatusThunk.fulfilled, (state, action) => {
+        const updatedOrder = action.payload;
+        const index = state.orders.findIndex((o) => o.id === updatedOrder.id);
+        if (index !== -1) {
+          state.orders[index] = updatedOrder;
+        }
       });
   },
 });

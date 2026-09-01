@@ -1,17 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { AxiosError } from "axios";
 import API from "../../api/axiosConfig";
-
-export interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  isAvailable: boolean;
-  categoryId?: number;
-  categoryName: string;
-  ingredientNames: string[];
-}
+import type { Product, ProductRequestDTO } from "../../interfaces/Product";
 
 interface ProductState {
   products: Product[];
@@ -44,6 +34,57 @@ export const fetchProductsThunk = createAsyncThunk<
   }
 });
 
+export const createProductThunk = createAsyncThunk<
+  Product,
+  ProductRequestDTO,
+  { rejectValue: string }
+>("products/createProduct", async (data, { rejectWithValue }) => {
+  try {
+    const response = await API.post<Product>("/products", data);
+    return response.data;
+  } catch (err) {
+    let errorMessage = "Errore durante la creazione del prodotto";
+    if (err instanceof AxiosError && err.response?.data?.message) {
+      errorMessage = err.response.data.message;
+    }
+    return rejectWithValue(errorMessage);
+  }
+});
+
+export const updateProductThunk = createAsyncThunk<
+  Product,
+  { id: number; data: ProductRequestDTO },
+  { rejectValue: string }
+>("products/updateProduct", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    const response = await API.put<Product>(`/products/${id}`, data);
+    return response.data;
+  } catch (err) {
+    let errorMessage = "Errore durante la modifica del prodotto";
+    if (err instanceof AxiosError && err.response?.data?.message) {
+      errorMessage = err.response.data.message;
+    }
+    return rejectWithValue(errorMessage);
+  }
+});
+
+export const deleteProductThunk = createAsyncThunk<
+  number,
+  number,
+  { rejectValue: string }
+>("products/deleteProduct", async (id, { rejectWithValue }) => {
+  try {
+    await API.delete(`/products/${id}`);
+    return id;
+  } catch (err) {
+    let errorMessage = "Errore durante l'eliminazione del prodotto";
+    if (err instanceof AxiosError && err.response?.data?.message) {
+      errorMessage = err.response.data.message;
+    }
+    return rejectWithValue(errorMessage);
+  }
+});
+
 export const productSlice = createSlice({
   name: "products",
   initialState,
@@ -65,6 +106,20 @@ export const productSlice = createSlice({
       .addCase(fetchProductsThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || "Errore sconosciuto";
+      })
+      .addCase(createProductThunk.fulfilled, (state, action) => {
+        state.products.push(action.payload);
+      })
+      .addCase(updateProductThunk.fulfilled, (state, action) => {
+        const index = state.products.findIndex(
+          (p) => p.id === action.payload.id,
+        );
+        if (index !== -1) {
+          state.products[index] = action.payload;
+        }
+      })
+      .addCase(deleteProductThunk.fulfilled, (state, action) => {
+        state.products = state.products.filter((p) => p.id !== action.payload);
       });
   },
 });

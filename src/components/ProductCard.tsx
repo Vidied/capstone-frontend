@@ -1,5 +1,5 @@
 import { Badge, Card, Col } from "react-bootstrap";
-import type { Product } from "../features/menu/productSlice";
+import type { Product } from "../interfaces/Product";
 
 interface ProductCardProps {
   product: Product;
@@ -26,7 +26,7 @@ export const ProductCard = ({ product }: ProductCardProps) => {
         <Card>
           <small>Ingredienti:</small>
           <div>
-            {product.ingredientNames.map((ingredient, index) => (
+            {product.ingredientNames?.map((ingredient, index) => (
               <Badge key={index}>{ingredient}</Badge>
             ))}
           </div>

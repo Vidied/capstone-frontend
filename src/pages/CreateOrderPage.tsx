@@ -10,12 +10,10 @@ import {
   clearOrderMessages,
   createOrderThunk,
 } from "../features/menu/orderSlice";
-import {
-  fetchProductsThunk,
-  type Product,
-} from "../features/menu/productSlice";
+import { fetchProductsThunk } from "../features/menu/productSlice";
 import type { CartItem, OrderRequestDTO, OrderType } from "../interfaces/Order";
 import { useDebounce } from "../app/hooks";
+import type { Product } from "../interfaces/Product";
 
 export const CreateOrderPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();

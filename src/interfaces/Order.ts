@@ -1,5 +1,5 @@
 import type { Variant } from "react-bootstrap/esm/types";
-import type { Product } from "../features/menu/productSlice";
+import type { Product } from "./Product";
 
 export const ALL_ORDER_STATUSES = [
   "ATTIVI",

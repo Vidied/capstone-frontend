@@ -1,5 +1,5 @@
 import { Nav } from "react-bootstrap";
-import type { Category } from "../features/menu/categorySlice";
+import type { Category } from "../interfaces/Product";
 
 interface CategoryFilterProps {
   categories: Category[];

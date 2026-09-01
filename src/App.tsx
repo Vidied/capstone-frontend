@@ -4,6 +4,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { MenuPage } from "./pages/MenuPage";
 import { CreateOrderPage } from "./pages/CreateOrderPage";
 import { OrdersListPage } from "./pages/OrderListPage";
+import { MenuManagementPage } from "./pages/MenuManagementPage";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="/menu" element={<MenuPage />} />
         <Route path="/create-order" element={<CreateOrderPage />} />
         <Route path="/order-list" element={<OrdersListPage />} />
+        <Route path="/menu-management" element={<MenuManagementPage />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>

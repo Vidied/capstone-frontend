@@ -1,6 +1,6 @@
 import React from "react";
-import { Row, Col, Card, Button, Spinner, Alert } from "react-bootstrap";
-import type { Product } from "../features/menu/productSlice";
+import { Alert, Button, Card, Col, Row, Spinner } from "react-bootstrap";
+import type { Product } from "../interfaces/Product";
 
 interface ProductGridProps {
   products: Product[];

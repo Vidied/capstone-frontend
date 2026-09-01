@@ -48,9 +48,17 @@ export const MenuPage = () => {
     const query = searchTerm.toLowerCase();
 
     const matchesName = product.name.toLowerCase().includes(query);
-    const matchesIngredient = product.ingredientNames.some((ingredients) =>
-      ingredients.toLowerCase().includes(query),
-    );
+
+    const rawIngredients = product.ingredientNames || product.ingredients || [];
+
+    const matchesIngredient = rawIngredients.some((ing) => {
+      if (!ing) return false;
+
+      const ingredientName = typeof ing === "string" ? ing : ing.name;
+      return ingredientName
+        ? ingredientName.toLowerCase().includes(query)
+        : false;
+    });
     //Un po' un extra ma se un cliente si ricorda solo della descrizione di un prodotto specifico questo lo aiuterà nella ricerca
     const matchesDescription = product.description
       ? product.description.toLowerCase().includes(query)

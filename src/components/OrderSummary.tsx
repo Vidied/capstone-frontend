@@ -170,7 +170,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <Form.Control
                   size="sm"
                   type="text"
-                  placeholder="Note piatto (es. ben cotta, senza origano)"
+                  placeholder="Note piatto"
                   value={notes || ""}
                   onChange={(e) => onUpdateNotes(index, e.target.value)}
                   className="bg-dark text-white border-secondary small"

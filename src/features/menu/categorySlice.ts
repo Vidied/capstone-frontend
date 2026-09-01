@@ -5,11 +5,7 @@ import {
 } from "@reduxjs/toolkit";
 import { AxiosError } from "axios";
 import API from "../../api/axiosConfig";
-
-export interface Category {
-  id: number;
-  name: string;
-}
+import type { Category, CategoryRequestDTO } from "../../interfaces/Product";
 
 interface CategoryState {
   categories: Category[];
@@ -44,6 +40,57 @@ export const fetchCategoriesThunk = createAsyncThunk<
   }
 });
 
+export const createCategoryThunk = createAsyncThunk<
+  Category,
+  CategoryRequestDTO,
+  { rejectValue: string }
+>("categories/createCategory", async (data, { rejectWithValue }) => {
+  try {
+    const response = await API.post<Category>("/categories", data);
+    return response.data;
+  } catch (err) {
+    let errorMessage = "Errore durante la creazione della categoria";
+    if (err instanceof AxiosError && err.response?.data?.message) {
+      errorMessage = err.response.data.message;
+    }
+    return rejectWithValue(errorMessage);
+  }
+});
+
+export const deleteCategoryThunk = createAsyncThunk<
+  number,
+  number,
+  { rejectValue: string }
+>("categories/deleteCategory", async (id, { rejectWithValue }) => {
+  try {
+    await API.delete(`/categories/${id}`);
+    return id;
+  } catch (err) {
+    let errorMessage = "Errore durante l'eliminazione della categoria";
+    if (err instanceof AxiosError && err.response?.data?.message) {
+      errorMessage = err.response.data.message;
+    }
+    return rejectWithValue(errorMessage);
+  }
+});
+
+export const updateCategoryThunk = createAsyncThunk<
+  Category,
+  { id: number; data: CategoryRequestDTO },
+  { rejectValue: string }
+>("categories/updateCategory", async ({ id, data }, { rejectWithValue }) => {
+  try {
+    const response = await API.put<Category>(`/categories/${id}`, data);
+    return response.data;
+  } catch (err) {
+    let errorMessage = "Errore durante la modifica della categoria";
+    if (err instanceof AxiosError && err.response?.data?.message) {
+      errorMessage = err.response.data.message;
+    }
+    return rejectWithValue(errorMessage);
+  }
+});
+
 export const categorySlice = createSlice({
   name: "categories",
   initialState,
@@ -68,6 +115,22 @@ export const categorySlice = createSlice({
       .addCase(fetchCategoriesThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || "Errore sconosciuto";
+      })
+      .addCase(createCategoryThunk.fulfilled, (state, action) => {
+        state.categories.push(action.payload);
+      })
+      .addCase(updateCategoryThunk.fulfilled, (state, action) => {
+        const index = state.categories.findIndex(
+          (c) => c.id === action.payload.id,
+        );
+        if (index !== -1) {
+          state.categories[index] = action.payload;
+        }
+      })
+      .addCase(deleteCategoryThunk.fulfilled, (state, action) => {
+        state.categories = state.categories.filter(
+          (c) => c.id !== action.payload,
+        );
       });
   },
 });
