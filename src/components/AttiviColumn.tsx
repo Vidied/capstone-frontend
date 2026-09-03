@@ -1,42 +1,52 @@
 import React from "react";
-import { Col } from "react-bootstrap";
+import { Col, Badge } from "react-bootstrap";
+import { OrderCard } from "./OrderCard";
 import {
   getBadgeVariant,
   type Order,
   type OrderStatus,
 } from "../interfaces/Order";
-import { OrderCard } from "./OrderCard";
 
 interface AttiviColumnProps {
-  status: OrderStatus;
   title: string;
   orders: Order[];
+  status: OrderStatus;
   emptyMessage: string;
   onNextStatus: (orderId: number, currentStatus: OrderStatus) => void;
+  onCancelOrder?: (
+    orderId: number,
+    tableNumber?: number | string | null,
+    orderType?: string,
+  ) => void;
 }
 
 export const AttiviColumn: React.FC<AttiviColumnProps> = ({
-  status,
   title,
   orders,
+  status,
   emptyMessage,
   onNextStatus,
+  onCancelOrder,
 }) => {
-  const variant = getBadgeVariant(status);
   return (
-    <Col lg={4}>
-      <div
-        className={`p-2 rounded bg-secondary bg-opacity-10 border border-${variant} mb-3`}
-      >
-        <h4 className={`text-${variant} fs-5 mb-0`}>
-          {title} ({orders.length})
-        </h4>
+    <Col md={4}>
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h4 className="m-0 fw-bold">{title}</h4>
+        <Badge bg={getBadgeVariant(status)} text="dark">
+          {orders.length}
+        </Badge>
       </div>
+
       {orders.length === 0 ? (
-        <p className="text-muted small">{emptyMessage}</p>
+        <p className="text-muted italic">{emptyMessage}</p>
       ) : (
         orders.map((order) => (
-          <OrderCard key={order.id} order={order} onNextStatus={onNextStatus} />
+          <OrderCard
+            key={order.id}
+            order={order}
+            onNextStatus={onNextStatus}
+            onCancelOrder={onCancelOrder}
+          />
         ))
       )}
     </Col>

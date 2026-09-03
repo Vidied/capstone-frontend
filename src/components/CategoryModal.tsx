@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
 import type { Category, CategoryRequestDTO } from "../interfaces/Product";
 
@@ -17,24 +17,13 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   categoryToEdit,
   categories,
 }) => {
-  const [name, setName] = useState<string>("");
-  const [displayOrder, setDisplayOrder] = useState<string>("");
-
-  useEffect(() => {
-    if (categoryToEdit) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setName(categoryToEdit.name);
-      setDisplayOrder(
-        categoryToEdit.displayOrder !== undefined &&
-          categoryToEdit.displayOrder !== null
-          ? String(categoryToEdit.displayOrder)
-          : "",
-      );
-    } else {
-      setName("");
-      setDisplayOrder("");
-    }
-  }, [categoryToEdit, show]);
+  const [name, setName] = useState<string>(categoryToEdit?.name ?? "");
+  const [displayOrder, setDisplayOrder] = useState<string>(
+    categoryToEdit?.displayOrder !== undefined &&
+      categoryToEdit?.displayOrder !== null
+      ? String(categoryToEdit.displayOrder)
+      : "",
+  );
 
   const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -73,36 +62,33 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
 
           {categoryToEdit && (
             <Form.Group className="mb-3">
-              <Form.Label>Ordine di Visualizzazione</Form.Label>
+              <Form.Label>Scambia Posizione Con</Form.Label>
               <Form.Select
                 value={displayOrder}
                 onChange={(e) => setDisplayOrder(e.target.value)}
                 className="bg-secondary text-white border-0"
               >
-                <option value="" disabled>
-                  Seleziona una posizione...
+                <option value="">
+                  Nessuno scambio (mantieni posizione corrente #
+                  {categoryToEdit.displayOrder})
                 </option>
 
                 {categories
-                  .map((cat) => cat.displayOrder)
                   .filter(
-                    (order): order is number =>
-                      order !== undefined && order !== null,
+                    (cat) =>
+                      cat.id !== categoryToEdit.id &&
+                      cat.displayOrder !== undefined,
                   )
-                  .sort((a, b) => a - b)
-                  .map((order) => {
-                    const currentCat = categories.find(
-                      (c) => c.displayOrder === order,
-                    );
-                    return (
-                      <option key={order} value={order}>
-                        #{order} {currentCat ? `(${currentCat.name})` : ""}
-                      </option>
-                    );
-                  })}
+                  .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+                  .map((cat) => (
+                    <option key={cat.id} value={cat.displayOrder}>
+                      Posizione #{cat.displayOrder} - ({cat.name})
+                    </option>
+                  ))}
               </Form.Select>
               <Form.Text className="text-muted">
-                Seleziona la categoria con cui vuoi scambiare la posizione
+                Seleziona la categoria con cui vuoi scambiare l'ordine di
+                visualizzazione
               </Form.Text>
             </Form.Group>
           )}

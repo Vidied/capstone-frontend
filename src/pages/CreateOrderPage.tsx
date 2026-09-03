@@ -9,11 +9,12 @@ import { SearchBar } from "../components/SearchBar";
 import {
   clearOrderMessages,
   createOrderThunk,
-} from "../features/menu/orderSlice";
-import { fetchProductsThunk } from "../features/menu/productSlice";
+} from "../features/slices/orderSlice";
+import { fetchProductsThunk } from "../features/slices/productSlice";
 import type { CartItem, OrderRequestDTO, OrderType } from "../interfaces/Order";
 import { useDebounce } from "../app/hooks";
 import type { Product } from "../interfaces/Product";
+import { printTickets, splitItemsByDestination } from "../utils/printer";
 
 export const CreateOrderPage: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -44,7 +45,6 @@ export const CreateOrderPage: React.FC = () => {
     };
   }, [dispatch]);
 
-  // Estrazione dinamica delle categorie uniche dai prodotti
   const availableCategories = Array.from(
     new Set(
       products
@@ -53,7 +53,6 @@ export const CreateOrderPage: React.FC = () => {
     ),
   );
 
-  // Controlla se ci sta una voce nel carrello senza note, se ci sta aumenta quello altrimenti ne crea una nuova
   const handleAddToCart = (product: Product) => {
     setCart((prevCart) => {
       const existingIndex = prevCart.findIndex(
@@ -75,7 +74,6 @@ export const CreateOrderPage: React.FC = () => {
     });
   };
 
-  // Gestione modali e variazioni sul carrello per Indice
   const handleUpdateQuantityByIndex = (index: number, quantity: number) => {
     setCart((prevCart) =>
       prevCart.map((item, i) => (i === index ? { ...item, quantity } : item)),
@@ -92,7 +90,7 @@ export const CreateOrderPage: React.FC = () => {
     setCart((prevCart) => prevCart.filter((_, i) => i !== index));
   };
 
-  // Invio comanda al backend
+  // Invio comanda al backend e stampa automatica dei tagliandi
   const handleSubmitOrder = async () => {
     dispatch(clearOrderMessages());
 
@@ -112,11 +110,20 @@ export const CreateOrderPage: React.FC = () => {
       })),
     };
 
-    console.log("Invio payload comanda:", payload);
-
     const resultAction = await dispatch(createOrderThunk(payload));
 
     if (createOrderThunk.fulfilled.match(resultAction)) {
+      // Generazione e stampa automatica delle comande per reparto
+      const tickets = splitItemsByDestination(
+        cart,
+        tableNumber,
+        orderType,
+        false,
+        generalNotes,
+      );
+      printTickets(tickets);
+
+      // Reset form
       setCart([]);
       setTableNumber("");
       setCoverCount("");
@@ -124,19 +131,22 @@ export const CreateOrderPage: React.FC = () => {
     }
   };
 
-  // Filtro che restituisce prodotti che matchano parte del nome o almeno uno dei ingredienti alla query della ricerca
   const filteredProducts = products.filter((p) => {
-    const query = debouncedSearchQuery.toLocaleLowerCase();
+    const query = debouncedSearchQuery.toLowerCase();
 
-    const matchName = p.name.toLowerCase().includes(query);
-    const matchIngredients = p.ingredientNames?.some((ingredients) =>
-      ingredients.toLocaleLowerCase().includes(query),
+    // Gestisce il nome prodotto o fallback a stringa vuota
+    const productName = (p.name || "").toLowerCase();
+    const matchName = productName.includes(query);
+
+    const matchIngredients = p.ingredientNames?.some((ingredient) =>
+      ingredient?.toLowerCase().includes(query),
     );
 
     const matchesSearch = matchName || Boolean(matchIngredients);
     const matchesCategory =
       selectedCategory === "TUTTI" ||
       p.categoryName?.toUpperCase() === selectedCategory.toUpperCase();
+
     return matchesSearch && matchesCategory;
   });
 
@@ -152,6 +162,7 @@ export const CreateOrderPage: React.FC = () => {
       {errorMessage && <Alert variant="danger">{errorMessage}</Alert>}
 
       <Row>
+        {/* Sezione Sinistra: Filtri e Catalogo Prodotti (7/12) */}
         <Col md={7} className="mb-4">
           <Card className="bg-dark text-white border-secondary mb-3">
             <Card.Body>
@@ -173,9 +184,7 @@ export const CreateOrderPage: React.FC = () => {
               </Row>
             </Card.Body>
           </Card>
-        </Col>
-        {/* Card dei prodotti creati in modo dinamico */}
-        <Col md={7} className="mb-4">
+
           <ProductGrid
             products={filteredProducts}
             isLoading={productsLoading}
@@ -183,7 +192,8 @@ export const CreateOrderPage: React.FC = () => {
             onAddToCart={handleAddToCart}
           />
         </Col>
-        {/* Riassunto della comanda con tasto di invio */}
+
+        {/* Sezione Destra: Carrello e Riepilogo (5/12) */}
         <Col md={5}>
           <OrderSummary
             cart={cart}

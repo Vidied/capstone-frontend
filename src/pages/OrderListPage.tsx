@@ -5,11 +5,18 @@ import { AttiviColumn } from "../components/AttiviColumn";
 import { OrderCard } from "../components/OrderCard";
 import { OrderFilterHeader } from "../components/OrderFilterHeader";
 import {
+  appendItemsThunk,
   clearOrderMessages,
+  deleteOrderThunk,
   fetchOrderThunk,
   updateOrderStatusThunk,
-} from "../features/menu/orderSlice";
-import type { OrderStatus } from "../interfaces/Order";
+} from "../features/slices/orderSlice";
+import type { OrderItem, OrderStatus, OrderType } from "../interfaces/Order";
+import {
+  printCancellationTicket,
+  printTickets,
+  splitItemsByDestination,
+} from "../utils/printer";
 
 export const OrdersListPage: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -18,7 +25,7 @@ export const OrdersListPage: React.FC = () => {
   );
   const [selectedStatus, setSelectedStatus] = useState<string>("ATTIVI");
 
-  //Fetch iniziale con auto aggiornamento ogni 10 secondi per la visualizzazione delle nuove comande
+  // Fetch iniziale con auto aggiornamento ogni 10 secondi
   useEffect(() => {
     dispatch(fetchOrderThunk());
 
@@ -39,7 +46,7 @@ export const OrdersListPage: React.FC = () => {
     }
   }, [successMessage, error, dispatch]);
 
-  //Funzione "switch" per cambio di stato a quello successivo
+  // Avanzamento stato
   const handleNextStatus = (orderId: number, currentStatus: OrderStatus) => {
     const statusFlow: Record<OrderStatus, OrderStatus | null> = {
       PENDING: "PREPARATION",
@@ -47,7 +54,6 @@ export const OrdersListPage: React.FC = () => {
       READY: "SERVED",
       SERVED: "COMPLETED",
       COMPLETED: null,
-      CANCELLED: null,
     };
 
     const nextStatus = statusFlow[currentStatus];
@@ -56,7 +62,59 @@ export const OrdersListPage: React.FC = () => {
     }
   };
 
-  //Filtri gruppi di ordini per la schermata dei attivi con useMemo per non ricaricare inutilmente se non ci sono cambiamenti
+  // Handler per la CANCELLAZIONE della comanda
+  const handleCancelOrder = async (
+    orderId: number,
+    tableNumber?: number | string | null,
+    orderType: string = "TAVOLO",
+  ) => {
+    const result = await dispatch(deleteOrderThunk(orderId));
+
+    if (deleteOrderThunk.fulfilled.match(result)) {
+      printCancellationTicket({
+        orderId,
+        tableNumber,
+        orderType,
+        timestamp: new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
+    }
+  };
+
+  // Handler per l'AGGIUNTA piatti a comanda esistente
+  const handleAppendToOrder = async (
+    orderId: number,
+    newOrderItems: OrderItem[],
+    tableNumber: string,
+    orderType: OrderType,
+  ) => {
+    const payload = {
+      items: newOrderItems.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        notes: item.notes || undefined,
+      })),
+    };
+
+    const result = await dispatch(
+      appendItemsThunk({ orderId, items: payload.items }),
+    );
+
+    if (appendItemsThunk.fulfilled.match(result)) {
+      const tickets = splitItemsByDestination(
+        newOrderItems,
+        tableNumber,
+        orderType,
+        true,
+        "INTEGRAZIONE COMANDA",
+      );
+      printTickets(tickets);
+    }
+  };
+
+  // Filtri gruppi di ordini
   const {
     pendingOrders,
     preparationOrders,
@@ -72,9 +130,9 @@ export const OrdersListPage: React.FC = () => {
       ),
     };
   }, [orders, selectedStatus]);
+
   return (
     <Container fluid className="py-4 bg-dark text-white min-vh-100">
-      {/* Filtro degli stati */}
       <OrderFilterHeader
         selectedStatus={selectedStatus}
         onStatusChange={setSelectedStatus}
@@ -82,7 +140,7 @@ export const OrdersListPage: React.FC = () => {
 
       {successMessage && <Alert variant="success">{successMessage}</Alert>}
       {error && <Alert variant="danger">{error}</Alert>}
-      {/* Cuore della pagina, da qui se non viene selezionato nessuna categoria in automatico fa visualizzare una schermata con le 3 schede principali da lavoro */}
+
       {loading && orders.length === 0 ? (
         <div className="text-center py-5">
           <Spinner animation="border" variant="light" />
@@ -95,6 +153,7 @@ export const OrdersListPage: React.FC = () => {
             status="PENDING"
             emptyMessage="Nessuna comanda in attesa."
             onNextStatus={handleNextStatus}
+            onCancelOrder={handleCancelOrder}
           />
           <AttiviColumn
             title="In Preparazione"
@@ -102,6 +161,7 @@ export const OrdersListPage: React.FC = () => {
             status="PREPARATION"
             emptyMessage="Nessun ordine in cucina."
             onNextStatus={handleNextStatus}
+            onCancelOrder={handleCancelOrder}
           />
           <AttiviColumn
             title="Pronti per la Sala"
@@ -109,10 +169,10 @@ export const OrdersListPage: React.FC = () => {
             status="READY"
             emptyMessage="Nessun ordine in attesa di uscita."
             onNextStatus={handleNextStatus}
+            onCancelOrder={handleCancelOrder}
           />
         </Row>
       ) : (
-        // In caso viene selezionato una categoria si verifica se ci sono ordini in caso positivo la mostra altrimenti ci sta il messaggio di "errore"
         <Row className="g-3">
           {specificFilteredOrders.length === 0 ? (
             <div className="text-center text-muted py-5">
@@ -121,7 +181,11 @@ export const OrdersListPage: React.FC = () => {
           ) : (
             specificFilteredOrders.map((order) => (
               <Col md={6} lg={4} key={order.id}>
-                <OrderCard order={order} onNextStatus={handleNextStatus} />
+                <OrderCard
+                  order={order}
+                  onNextStatus={handleNextStatus}
+                  onCancelOrder={handleCancelOrder}
+                />
               </Col>
             ))
           )}

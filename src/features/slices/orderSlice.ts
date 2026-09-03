@@ -71,6 +71,57 @@ export const updateOrderThunk = createAsyncThunk<
   },
 );
 
+// Thunk per aggiungere prodotti a un ordine esistente
+export const appendItemsThunk = createAsyncThunk<
+  Order,
+  {
+    orderId: number;
+    items: { productId: number; quantity: number; notes?: string }[];
+  },
+  { rejectValue: string }
+>("order/appendItems", async ({ orderId, items }, { rejectWithValue }) => {
+  try {
+    const response = await API.post<Order>(`/orders/${orderId}/items`, {
+      items,
+    });
+    return response.data;
+  } catch (err) {
+    if (err instanceof AxiosError) {
+      const backendMessage =
+        typeof err.response?.data === "string"
+          ? err.response.data
+          : err.response?.data?.message;
+      return rejectWithValue(
+        backendMessage || "Impossibile aggiungere elementi all'ordine",
+      );
+    }
+    return rejectWithValue("Errore di connessione al server");
+  }
+});
+
+// Thunk per cancellare un ordine
+export const deleteOrderThunk = createAsyncThunk<
+  number,
+  number,
+  { rejectValue: string }
+>("order/deleteOrder", async (orderId, { rejectWithValue }) => {
+  try {
+    await API.delete(`/orders/${orderId}`);
+    return orderId;
+  } catch (err) {
+    if (err instanceof AxiosError) {
+      const backendMessage =
+        typeof err.response?.data === "string"
+          ? err.response.data
+          : err.response?.data?.message;
+      return rejectWithValue(
+        backendMessage || "Impossibile cancellare l'ordine",
+      );
+    }
+    return rejectWithValue("Errore di connessione al server");
+  }
+});
+
 export const updateOrderStatusThunk = createAsyncThunk<
   Order,
   { orderId: number; status: OrderStatus },
@@ -139,7 +190,9 @@ const orderSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchOrderThunk.pending, (state) => {
-        state.loading = true;
+        if (state.orders.length === 0) {
+          state.loading = true;
+        }
         state.error = null;
       })
       .addCase(fetchOrderThunk.fulfilled, (state, action) => {
@@ -171,6 +224,18 @@ const orderSlice = createSlice({
           state.orders[index] = updatedOrder;
         }
         state.successMessage = "Comanda modificata con successo";
+      })
+      .addCase(appendItemsThunk.fulfilled, (state, action) => {
+        const updatedOrder = action.payload;
+        const index = state.orders.findIndex((o) => o.id === updatedOrder.id);
+        if (index !== -1) {
+          state.orders[index] = updatedOrder;
+        }
+        state.successMessage = "Aggiunta inviata alla cucina";
+      })
+      .addCase(deleteOrderThunk.fulfilled, (state, action) => {
+        state.orders = state.orders.filter((o) => o.id !== action.payload);
+        state.successMessage = "Ordine cancellato";
       })
       .addCase(updateOrderStatusThunk.fulfilled, (state, action) => {
         const updatedOrder = action.payload;

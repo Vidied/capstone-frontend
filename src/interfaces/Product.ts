@@ -1,3 +1,5 @@
+import type { DestinationArea } from "./Order";
+
 export interface Category {
   id: number;
   name: string;
@@ -20,6 +22,7 @@ export interface Product {
   category?: Category;
   ingredientNames?: string[];
   ingredients?: Ingredient[];
+  destinationArea: DestinationArea;
 }
 
 export interface ProductDTO {

@@ -7,12 +7,14 @@ import {
   Spinner,
   Tab,
   Tabs,
+  Toast,
+  ToastContainer,
 } from "react-bootstrap";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { CategoryModal } from "../components/CategoryModal";
 import { IngredientModal } from "../components/IngredientModal";
 import { ProductModal } from "../components/ProductModal";
-import { SearchBar } from "../components/SearchBar"; // Importato la tua SearchBar
+import { SearchBar } from "../components/SearchBar";
 
 import { CategoriesTable } from "../components/CategoriesTable";
 import { IngredientsTable } from "../components/IngredientsTable";
@@ -32,25 +34,40 @@ import {
   deleteCategoryThunk,
   fetchCategoriesThunk,
   updateCategoryThunk,
-} from "../features/menu/categorySlice";
+} from "../features/slices/categorySlice";
 import {
   createIngredientThunk,
   deleteIngredientThunk,
   fetchIngredientsThunk,
   updateIngredientThunk,
-} from "../features/menu/ingredientSlice";
+} from "../features/slices/ingredientSlice";
 import {
   createProductThunk,
   deleteProductThunk,
   fetchProductsThunk,
+  toggleProductAvailabilityThunk,
   updateProductThunk,
-} from "../features/menu/productSlice";
+} from "../features/slices/productSlice";
 import { getSearchPlaceholder } from "../interfaces/MenuHelpers";
 
 export const MenuManagementPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<string>("products");
   const [searchTerm, setSearchTerm] = useState<string>("");
+
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState<boolean>(false);
+
+  const getErrorMessage = (err: unknown, defaultMsg: string): string => {
+    if (typeof err === "string") return err;
+    if (err instanceof Error) return err.message;
+    return defaultMsg;
+  };
+
+  const triggerErrorToast = (msg: string) => {
+    setToastMessage(msg);
+    setShowToast(true);
+  };
 
   const {
     categories,
@@ -117,19 +134,13 @@ export const MenuManagementPage: React.FC = () => {
 
   const handleToggleProductAvailability = async (product: Product) => {
     try {
-      const dto: ProductRequestDTO = {
-        name: product.name,
-        description: product.description,
-        price: product.price,
-        isAvailable: !product.isAvailable,
-        categoryId: product.categoryId ?? product.category?.id ?? 0,
-        ingredientIds: product.ingredients?.map((ing) => ing.id) ?? [],
-      };
-      await dispatch(
-        updateProductThunk({ id: product.id, data: dto }),
-      ).unwrap();
-    } catch (err) {
-      console.error("Errore switch disponibilità prodotto:", err);
+      await dispatch(toggleProductAvailabilityThunk(product.id)).unwrap();
+    } catch (err: unknown) {
+      const errorMessage = getErrorMessage(
+        err,
+        "Impossibile modificare la disponibilità del prodotto.",
+      );
+      triggerErrorToast(errorMessage);
       dispatch(fetchProductsThunk());
     }
   };
@@ -144,8 +155,13 @@ export const MenuManagementPage: React.FC = () => {
         updateIngredientThunk({ id: ingredient.id, data: dto }),
       ).unwrap();
       dispatch(fetchProductsThunk());
-    } catch (err) {
-      console.error("Errore switch disponibilità ingrediente:", err);
+    } catch (err: unknown) {
+      triggerErrorToast(
+        getErrorMessage(
+          err,
+          "Impossibile modificare la disponibilità dell'ingrediente.",
+        ),
+      );
       dispatch(fetchIngredientsThunk());
     }
   };
@@ -159,8 +175,10 @@ export const MenuManagementPage: React.FC = () => {
       }
       setShowProductModal(false);
       setEditingProduct(null);
-    } catch (err) {
-      alert(`Errore nel salvataggio del prodotto: ${err}`);
+    } catch (err: unknown) {
+      triggerErrorToast(
+        `Errore nel salvataggio del prodotto: ${getErrorMessage(err, "Errore sconosciuto")}`,
+      );
     }
   };
 
@@ -168,8 +186,10 @@ export const MenuManagementPage: React.FC = () => {
     if (window.confirm("Sei sicuro di voler eliminare questo prodotto?")) {
       try {
         await dispatch(deleteProductThunk(id)).unwrap();
-      } catch (err) {
-        alert(`Errore durante l'eliminazione: ${err}`);
+      } catch (err: unknown) {
+        triggerErrorToast(
+          `Errore durante l'eliminazione: ${getErrorMessage(err, "Errore sconosciuto")}`,
+        );
       }
     }
   };
@@ -185,8 +205,10 @@ export const MenuManagementPage: React.FC = () => {
       setEditingCategory(null);
       dispatch(fetchCategoriesThunk());
       dispatch(fetchProductsThunk());
-    } catch (err) {
-      alert(`Errore nel salvataggio della categoria: ${err}`);
+    } catch (err: unknown) {
+      triggerErrorToast(
+        `Errore nel salvataggio della categoria: ${getErrorMessage(err, "Errore sconosciuto")}`,
+      );
     }
   };
 
@@ -196,8 +218,10 @@ export const MenuManagementPage: React.FC = () => {
         await dispatch(deleteCategoryThunk(id)).unwrap();
         dispatch(fetchCategoriesThunk());
         dispatch(fetchProductsThunk());
-      } catch (err) {
-        alert(`Errore durante l'eliminazione: ${err}`);
+      } catch (err: unknown) {
+        triggerErrorToast(
+          `Errore durante l'eliminazione: ${getErrorMessage(err, "Errore sconosciuto")}`,
+        );
       }
     }
   };
@@ -216,8 +240,10 @@ export const MenuManagementPage: React.FC = () => {
       setEditingIngredient(null);
       dispatch(fetchIngredientsThunk());
       dispatch(fetchProductsThunk());
-    } catch (err) {
-      alert(`Errore nel salvataggio dell'ingrediente: ${err}`);
+    } catch (err: unknown) {
+      triggerErrorToast(
+        `Errore nel salvataggio dell'ingrediente: ${getErrorMessage(err, "Errore sconosciuto")}`,
+      );
     }
   };
 
@@ -226,8 +252,10 @@ export const MenuManagementPage: React.FC = () => {
       try {
         await dispatch(deleteIngredientThunk(id)).unwrap();
         dispatch(fetchProductsThunk());
-      } catch (err) {
-        alert(`Errore durante l'eliminazione: ${err}`);
+      } catch (err: unknown) {
+        triggerErrorToast(
+          `Errore durante l'eliminazione: ${getErrorMessage(err, "Errore sconosciuto")}`,
+        );
       }
     }
   };
@@ -236,7 +264,29 @@ export const MenuManagementPage: React.FC = () => {
   const globalError = productsError || categoriesError || ingredientsError;
 
   return (
-    <Container fluid className="py-4 bg-dark text-white min-vh-100">
+    <Container
+      fluid
+      className="py-4 bg-dark text-white min-vh-100 position-relative"
+    >
+      <ToastContainer
+        position="top-end"
+        className="p-3"
+        style={{ zIndex: 1055 }}
+      >
+        <Toast
+          bg="danger"
+          onClose={() => setShowToast(false)}
+          show={showToast}
+          delay={4000}
+          autohide
+        >
+          <Toast.Header closeButton>
+            <strong className="me-auto text-danger">Attenzione</strong>
+          </Toast.Header>
+          <Toast.Body className="text-white">{toastMessage}</Toast.Body>
+        </Toast>
+      </ToastContainer>
+
       <Row className="mb-4 align-items-center">
         <Col md={6}>
           <h2 className="mb-1">Gestione Menu & Magazzino</h2>

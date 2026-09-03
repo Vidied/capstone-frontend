@@ -15,6 +15,11 @@ const initialState: ProductState = {
   error: null,
 };
 
+interface ErrorResponseDTO {
+  message: string;
+  timestamp: string;
+}
+
 export const fetchProductsThunk = createAsyncThunk<
   Product[],
   void,
@@ -25,11 +30,9 @@ export const fetchProductsThunk = createAsyncThunk<
     return response.data;
   } catch (err) {
     let errorMessage = "Prodotto inesistente o errore nel caricamento";
-
     if (err instanceof AxiosError && err.response?.data?.message) {
       errorMessage = err.response.data.message;
     }
-
     return rejectWithValue(errorMessage);
   }
 });
@@ -85,6 +88,28 @@ export const deleteProductThunk = createAsyncThunk<
   }
 });
 
+import axios from "axios";
+
+export const toggleProductAvailabilityThunk = createAsyncThunk<
+  Product,
+  number,
+  { rejectValue: string }
+>("products/toggleAvailability", async (productId, { rejectWithValue }) => {
+  try {
+    const response = await axios.patch<Product>(
+      `/products/${productId}/availability`,
+    );
+    return response.data;
+  } catch (err: unknown) {
+    if (axios.isAxiosError<ErrorResponseDTO>(err)) {
+      if (err.response?.data?.message) {
+        return rejectWithValue(err.response.data.message);
+      }
+    }
+    return rejectWithValue("Errore di connessione o operazione non riuscita.");
+  }
+});
+
 export const productSlice = createSlice({
   name: "products",
   initialState,
@@ -120,6 +145,14 @@ export const productSlice = createSlice({
       })
       .addCase(deleteProductThunk.fulfilled, (state, action) => {
         state.products = state.products.filter((p) => p.id !== action.payload);
+      })
+      .addCase(toggleProductAvailabilityThunk.fulfilled, (state, action) => {
+        const index = state.products.findIndex(
+          (p) => p.id === action.payload.id,
+        );
+        if (index !== -1) {
+          state.products[index] = action.payload;
+        }
       });
   },
 });

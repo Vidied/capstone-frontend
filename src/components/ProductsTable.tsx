@@ -54,6 +54,9 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
                 : product.ingredients
                   ? product.ingredients.map((ing) => ing.name)
                   : [];
+              const hasUnavailableIngredient =
+                !product.isAvailable &&
+                product.ingredients?.some((ing) => !ing.isAvailable);
 
               return (
                 <tr key={product.id} className="border-secondary">
@@ -93,18 +96,22 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
                     <Form.Check
                       type="switch"
                       id={`product-switch-${product.id}`}
-                      checked={product.isAvailable ?? true}
+                      checked={product.isAvailable}
+                      disabled={hasUnavailableIngredient}
+                      title={
+                        hasUnavailableIngredient
+                          ? "Impossibile attivare: alcuni ingredienti non sono disponibili"
+                          : "Cambia disponibilità"
+                      }
                       onChange={() => onToggleAvailability(product)}
                     />
                   </td>
 
                   <td className="text-end">
-                    <td className="text-end">
-                      <ActionButtons
-                        onEdit={() => onEdit(product)}
-                        onDelete={() => onDelete(product.id)}
-                      />
-                    </td>
+                    <ActionButtons
+                      onEdit={() => onEdit(product)}
+                      onDelete={() => onDelete(product.id)}
+                    />
                   </td>
                 </tr>
               );

@@ -8,7 +8,7 @@ export const ALL_ORDER_STATUSES = [
   "READY",
   "SERVED",
   "COMPLETED",
-  "CANCELLED",
+  // "CANCELLED", commento al momento in quanto non ho ancora fatto feature specifiche a riguardo (verrà implementato in versioni future)
 ] as const;
 
 export type OrderStatusAttivi = (typeof ALL_ORDER_STATUSES)[number];
@@ -17,10 +17,17 @@ export type OrderStatus = Exclude<OrderStatusAttivi, "ATTIVI">;
 
 export type OrderType = "TAVOLO" | "ASPORTO";
 
+export type DestinationArea = "PIZZERIA" | "CUCINA" | "SALA";
+
 export interface OrderItemRequestDTO {
   productId: number;
   quantity: number;
   notes?: string;
+}
+
+export interface AddOrderItemRequestDTO {
+  orderId: number;
+  items: OrderItemRequestDTO[];
 }
 
 export interface OrderRequestDTO {
@@ -33,10 +40,13 @@ export interface OrderRequestDTO {
 
 export interface OrderItem {
   id?: number;
-  product: Product;
+  productId: number;
+  productName: string;
   quantity: number;
-  unitPrice: number;
+  price: number;
   notes?: string;
+  destinationArea?: DestinationArea;
+  orderItemStatus?: OrderStatus;
 }
 
 export interface Order {
@@ -78,13 +88,23 @@ export interface OrderSummaryProps {
   isSubmitting: boolean;
 }
 
+const DESTINATION_BADGE: Record<DestinationArea, Variant> = {
+  PIZZERIA: "warning",
+  CUCINA: "danger",
+  SALA: "info",
+};
+
+export const getDestinationBadge = (destination: DestinationArea): Variant => {
+  return DESTINATION_BADGE[destination] ?? "info";
+};
+
 const BADGE_VARIANTS: Record<OrderStatus, Variant> = {
   PENDING: "warning",
   PREPARATION: "primary",
   READY: "info",
   SERVED: "secondary",
   COMPLETED: "success",
-  CANCELLED: "danger",
+  // CANCELLED: "danger",
 };
 
 export const getBadgeVariant = (status: OrderStatus): Variant => {
@@ -93,11 +113,11 @@ export const getBadgeVariant = (status: OrderStatus): Variant => {
 //Label per i vari stati della preparazione per avere una UI migliore
 const NEXT_STATUS_LABELS: Record<OrderStatus, string> = {
   PENDING: "Inizia Preparazione",
-  PREPARATION: "Pronto per la Sala (READY)",
+  PREPARATION: "Pronto per la Sala",
   READY: "Segna come Servito",
-  SERVED: "Incassa (COMPLETED)",
+  SERVED: "Incassa",
   COMPLETED: "Avanza Stato",
-  CANCELLED: "Avanza Stato",
+  // CANCELLED: "Avanza Stato",
 };
 
 export const getNextStatusLabel = (status: OrderStatus): string => {

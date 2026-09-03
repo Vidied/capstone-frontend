@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
-import { fetchCategoriesThunk } from "../features/menu/categorySlice";
-import { fetchProductsThunk } from "../features/menu/productSlice";
+import { fetchCategoriesThunk } from "../features/slices/categorySlice";
+import { fetchProductsThunk } from "../features/slices/productSlice";
 import { CategoryFilter } from "../components/CategoryFilter";
 import { SearchBar } from "../components/SearchBar";
 import { Alert, Container, Spinner } from "react-bootstrap";
