@@ -4,7 +4,7 @@ import Form from "react-bootstrap/Form";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { useNavigate } from "react-router-dom";
 import { clearError, loginThunk } from "../features/auth/authSlice";
-import { Alert, Container, Spinner } from "react-bootstrap";
+import { Alert, Container, Spinner, Row, Col, Card } from "react-bootstrap";
 
 export const LoginPage = () => {
   const [email, setEmail] = useState<string>("");
@@ -32,51 +32,99 @@ export const LoginPage = () => {
   };
 
   return (
-    <Container className="bg-dark">
-      {error && (
-        <Alert
-          variant="danger"
-          onClose={() => dispatch(clearError())}
-          dismissible
-        >
-          {error}
-        </Alert>
-      )}
-      <Form onSubmit={handleSubmit}>
-        <Form.Group className="mb-3" controlId="loginEmail">
-          <Form.Label>Email di accesso</Form.Label>
-          <Form.Control
-            required
-            type="email"
-            placeholder="Inserisci la email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Form.Text className="text-muted"></Form.Text>
-        </Form.Group>
+    <Container
+      fluid
+      className="min-vh-100 d-flex justify-content-center pt-5"
+      style={{ backgroundColor: "#f7f4ee", color: "#2b2b2b" }}
+    >
+      <Row
+        className="w-100 justify-content-center"
+        style={{ height: "fit-content" }}
+      >
+        <Col xs={12} sm={8} md={6} lg={4}>
+          <Card
+            className="border-0 shadow-sm p-5 mt-4"
+            style={{ backgroundColor: "#ffffff", borderRadius: "12px" }}
+          >
+            <h2
+              className="fw-bold mb-4 text-center"
+              style={{ color: "#2b2b2b" }}
+            >
+              Accesso
+            </h2>
 
-        <Form.Group className="mb-3" controlId="loginPassword">
-          <Form.Label>Password</Form.Label>
-          <Form.Control
-            required
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </Form.Group>
-        <Button variant="primary" type="submit" disabled={loading}>
-          {loading ? (
-            <Spinner
-              animation="border"
-              size="sm"
-              className="me-2, justify-content-center"
-            ></Spinner>
-          ) : (
-            "Accedi"
-          )}
-        </Button>
-      </Form>
+            {error && (
+              <Alert
+                variant="danger"
+                onClose={() => dispatch(clearError())}
+                dismissible
+                className="mb-4"
+              >
+                {error}
+              </Alert>
+            )}
+
+            <Form onSubmit={handleSubmit}>
+              <Form.Group className="mb-4" controlId="loginEmail">
+                <Form.Label className="fw-semibold text-secondary small text-uppercase">
+                  Email di accesso
+                </Form.Label>
+                <Form.Control
+                  required
+                  type="email"
+                  placeholder="Inserisci la email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #000000",
+                    color: "#000000",
+                    height: "48px",
+                  }}
+                  className="shadow-none"
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-4" controlId="loginPassword">
+                <Form.Label className="fw-semibold text-secondary small text-uppercase">
+                  Password
+                </Form.Label>
+                <Form.Control
+                  required
+                  type="password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{
+                    backgroundColor: "#ffffff",
+                    border: "1px solid #000000",
+                    color: "#000000",
+                    height: "48px",
+                  }}
+                  className="shadow-none"
+                />
+              </Form.Group>
+
+              <Button
+                variant="dark"
+                type="submit"
+                disabled={loading}
+                className="w-100 py-3 fw-bold mt-2"
+              >
+                {loading ? (
+                  <Spinner
+                    animation="border"
+                    size="sm"
+                    className="me-2"
+                  ></Spinner>
+                ) : (
+                  "Accedi"
+                )}
+              </Button>
+            </Form>
+          </Card>
+        </Col>
+      </Row>
     </Container>
   );
 };
