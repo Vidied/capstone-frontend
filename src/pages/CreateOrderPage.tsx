@@ -144,7 +144,6 @@ export const CreateOrderPage: React.FC = () => {
 
     if (isExtraOrder && activeOrderForTable) {
       const newCoverCountNumber = coverCount ? Number(coverCount) : null;
-
       const coverCountHasChanged =
         activeOrderForTable.coverCount !== newCoverCountNumber;
 
@@ -226,20 +225,25 @@ export const CreateOrderPage: React.FC = () => {
   });
 
   return (
-    <Container fluid className="py-4 bg-dark text-white min-vh-100">
+    <Container fluid className="py-4 menu-page-bg min-vh-100">
       <Row className="mb-3">
         <Col>
-          <h2>Nuova Comanda</h2>
+          <h2 className="fw-bold" style={{ color: "#2b2b2b" }}>
+            Nuova Comanda
+          </h2>
         </Col>
       </Row>
 
       {successMessage && <Alert variant="success">{successMessage}</Alert>}
       {errorMessage && <Alert variant="danger">{errorMessage}</Alert>}
+      {errorMessage && (
+        <Alert variant="danger">Errore ordini: {errorMessage}</Alert>
+      )}
 
       {orderType === "TAVOLO" && activeOrderForTable && (
         <Alert
           variant="warning"
-          className="d-flex justify-content-between align-items-center mb-4"
+          className="d-flex justify-content-between align-items-center mb-4 shadow-sm border"
         >
           <div>
             <strong>Tavolo {tableNumber} ha già un ordine aperto!</strong>
@@ -254,33 +258,40 @@ export const CreateOrderPage: React.FC = () => {
         </Alert>
       )}
 
-      {/* Barra di ricerca e filtro categorie sempre in alto */}
-      <Card className="bg-dark text-white border-secondary mb-3">
-        <Card.Body>
-          <Row className="g-2">
-            <Col md={6}>
-              <SearchBar
-                searchTerm={searchQuery}
-                onSearchChange={setSearchQuery}
-                placeholder="Cerca piatto..."
-              />
-            </Col>
-            <Col md={6}>
-              <CategorySelect
-                selectedCategory={selectedCategory}
-                categories={availableCategories}
-                onCategoryChange={setSelectedCategory}
-              />
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
-
       <Row>
-        {/*
-          Su Mobile (sm e inferiori): OrderSummary appare PER PRIMO (order-1)
-          Su Desktop (md e superiori): OrderSummary appare a DESTRA (order-md-2)
-        */}
+        <Col md={7} className="order-2 order-md-1 mb-4">
+          <Card className="bg-white text-dark border shadow-sm mb-3">
+            <Card.Body>
+              <Row className="g-2">
+                <Col md={6}>
+                  <SearchBar
+                    searchTerm={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    placeholder="Cerca piatto o ingrediente..."
+                  />
+                </Col>
+                <Col md={6}>
+                  <CategorySelect
+                    selectedCategory={selectedCategory}
+                    categories={availableCategories}
+                    onCategoryChange={setSelectedCategory}
+                  />
+                </Col>
+              </Row>
+            </Card.Body>
+          </Card>
+
+          <ProductGrid
+            products={filteredProducts}
+            cart={cart}
+            isLoading={productsLoading}
+            error={productsError}
+            onAddToCart={handleAddToCart}
+            onUpdateQuantity={handleUpdateQuantityByIndex}
+            onRemoveItem={handleRemoveItemByIndex}
+          />
+        </Col>
+
         <Col md={5} className="order-1 order-md-2 mb-4">
           <OrderSummary
             cart={cart}
@@ -297,19 +308,6 @@ export const CreateOrderPage: React.FC = () => {
             onRemoveItem={handleRemoveItemByIndex}
             onSubmitOrder={handleSubmitOrder}
             isSubmitting={isSubmitting}
-          />
-        </Col>
-
-        {/*
-          Su Mobile (sm e inferiori): ProductGrid appare DOPO lo Summary (order-2)
-          Su Desktop (md e superiori): ProductGrid appare a SINISTRA (order-md-1)
-        */}
-        <Col md={7} className="order-2 order-md-1 mb-4">
-          <ProductGrid
-            products={filteredProducts}
-            isLoading={productsLoading}
-            error={productsError}
-            onAddToCart={handleAddToCart}
           />
         </Col>
       </Row>

@@ -7,6 +7,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { MenuManagementPage } from "./pages/MenuManagementPage";
 import { MenuPage } from "./pages/MenuPage";
 import { OrdersListPage } from "./pages/OrderListPage";
+import { ScrollToTopButton } from "./components/ScrollToTopButton";
 
 function App() {
   return (
@@ -27,6 +28,7 @@ function App() {
           {/* Redirect predefinito al menù per gli utenti generici */}
           <Route path="*" element={<Navigate to="/menu" replace />} />
         </Routes>
+        <ScrollToTopButton />
       </AppLayout>
     </BrowserRouter>
   );

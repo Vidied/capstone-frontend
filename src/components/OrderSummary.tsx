@@ -1,6 +1,23 @@
 import React from "react";
 import { Card, Button, Form, InputGroup, ListGroup } from "react-bootstrap";
-import type { OrderSummaryProps } from "../interfaces/Order";
+import type { CartItem, OrderType } from "../interfaces/Order";
+
+interface OrderSummaryProps {
+  cart: CartItem[];
+  tableNumber: string;
+  coverCount: string;
+  orderType: OrderType;
+  generalNotes: string;
+  onTableNumberChange: (value: string) => void;
+  onCoverCountChange: (value: string) => void;
+  onOrderTypeChange: (type: OrderType) => void;
+  onGeneralNotesChange: (notes: string) => void;
+  onUpdateQuantity: (index: number, quantity: number) => void;
+  onUpdateNotes: (index: number, notes: string) => void;
+  onRemoveItem: (index: number) => void;
+  onSubmitOrder: () => void;
+  isSubmitting: boolean;
+}
 
 export const OrderSummary: React.FC<OrderSummaryProps> = ({
   cart,
@@ -23,11 +40,9 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     0,
   );
 
-  // Controlli per la validità dei campi del tavolo
   const isTableProvided = tableNumber.trim() !== "";
   const isCoverProvided = coverCount.toString().trim() !== "";
 
-  // Il tavolo e i coperti sono entrambi obbligatori quando il tipo è TAVOLO
   const isTableValid =
     orderType === "ASPORTO" ||
     (orderType === "TAVOLO" && isTableProvided && isCoverProvided);
@@ -36,10 +51,10 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
 
   return (
     <Card
-      className="bg-dark text-white border-secondary sticky-top"
-      style={{ top: "1rem" }}
+      className="bg-white text-dark shadow-sm sticky-top"
+      style={{ top: "1rem", border: "1px solid #ced4da" }}
     >
-      <Card.Header className="border-secondary bg-dark text-white fw-bold h5 py-3">
+      <Card.Header className="border-bottom bg-white text-dark fw-bold h5 py-3">
         Riepilogo Comanda
       </Card.Header>
 
@@ -85,10 +100,11 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   value={tableNumber}
                   isInvalid={orderType === "TAVOLO" && !isTableProvided}
                   onChange={(e) => onTableNumberChange(e.target.value)}
-                  className="bg-dark text-white border-secondary"
+                  className="bg-white text-dark"
+                  style={{ border: "1px solid #adb5bd" }}
                 />
                 <Form.Control.Feedback type="invalid">
-                  Numero tavolo obbligatorio.
+                  Obbligatorio.
                 </Form.Control.Feedback>
               </div>
 
@@ -106,10 +122,11 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                     !isCoverProvided
                   }
                   onChange={(e) => onCoverCountChange(e.target.value)}
-                  className="bg-dark text-white border-secondary"
+                  className="bg-white text-dark"
+                  style={{ border: "1px solid #adb5bd" }}
                 />
                 <Form.Control.Feedback type="invalid">
-                  Coperti obbligatori.
+                  Obbligatori.
                 </Form.Control.Feedback>
               </div>
             </div>
@@ -122,15 +139,16 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             <Form.Control
               size="sm"
               type="text"
-              placeholder="Es. Servire prima i piatti dei bambini"
+              placeholder="Es. Servire prima i bambini"
               value={generalNotes}
               onChange={(e) => onGeneralNotesChange(e.target.value)}
-              className="bg-dark text-white border-secondary"
+              className="bg-white text-dark"
+              style={{ border: "1px solid #adb5bd" }}
             />
           </Form.Group>
         </Form>
 
-        <hr className="border-secondary" />
+        <hr className="border-top" />
 
         {cart.length === 0 ? (
           <p className="text-muted text-center py-4 my-0">
@@ -141,7 +159,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             {cart.map(({ product, quantity, notes }, index) => (
               <ListGroup.Item
                 key={`${product.id}-${index}`}
-                className="bg-dark text-white border-secondary px-0 py-2"
+                className="bg-white text-dark border-bottom px-0 py-2"
               >
                 <div className="d-flex justify-content-between align-items-start mb-1">
                   <span className="fw-bold me-2">{product.name}</span>
@@ -153,7 +171,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 <div className="d-flex justify-content-between align-items-center mb-2">
                   <InputGroup size="sm" style={{ width: "110px" }}>
                     <Button
-                      variant="outline-secondary"
+                      variant="outline-dark"
+                      style={{ border: "1px solid #adb5bd" }}
                       onClick={() =>
                         onUpdateQuantity(index, Math.max(1, quantity - 1))
                       }
@@ -163,10 +182,12 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                     <Form.Control
                       readOnly
                       value={quantity}
-                      className="bg-dark text-white border-secondary text-center px-1"
+                      className="bg-white text-dark text-center px-1"
+                      style={{ border: "1px solid #adb5bd" }}
                     />
                     <Button
-                      variant="outline-secondary"
+                      variant="outline-dark"
+                      style={{ border: "1px solid #adb5bd" }}
                       onClick={() => onUpdateQuantity(index, quantity + 1)}
                     >
                       +
@@ -188,17 +209,20 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                   placeholder="Note piatto"
                   value={notes || ""}
                   onChange={(e) => onUpdateNotes(index, e.target.value)}
-                  className="bg-dark text-white border-secondary small"
+                  className="bg-white text-dark small"
+                  style={{ border: "1px solid #adb5bd" }}
                 />
               </ListGroup.Item>
             ))}
           </ListGroup>
         )}
 
-        <hr className="border-secondary" />
+        <hr className="border-top" />
 
         <div className="d-flex justify-content-between align-items-center mb-3">
-          <span className="h5 mb-0">Totale:</span>
+          <span className="h5 mb-0" style={{ color: "#2b2b2b" }}>
+            Totale:
+          </span>
           <span className="h4 mb-0 text-success fw-bold">
             € {totalAmount.toFixed(2)}
           </span>
@@ -207,7 +231,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         <Button
           variant="success"
           size="lg"
-          className="w-100 fw-bold"
+          className="w-100 fw-bold shadow-sm"
           disabled={!isFormValid || isSubmitting}
           onClick={onSubmitOrder}
         >

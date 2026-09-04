@@ -18,7 +18,7 @@ export const CategorySelect: React.FC<CategorySelectProps> = ({
     <Form.Select
       value={selectedCategory}
       onChange={(e) => onCategoryChange(e.target.value)}
-      className="bg-dark text-white border-secondary"
+      className="bg-white text-dark border shadow-none"
     >
       <option value="TUTTI">{defaultLabel}</option>
       {categories.map((cat) => (

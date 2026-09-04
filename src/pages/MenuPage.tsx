@@ -14,7 +14,6 @@ export const MenuPage = () => {
     null,
   );
   const [searchTerm, setSearchTerm] = useState("");
-  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const {
     categories,
@@ -32,26 +31,6 @@ export const MenuPage = () => {
     dispatch(fetchCategoriesThunk());
     dispatch(fetchProductsThunk());
   }, [dispatch]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.scrollY > 300) {
-        setShowScrollTop(true);
-      } else {
-        setShowScrollTop(false);
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: "smooth",
-    });
-  };
 
   const isLoading = loadingCat || loadingProd;
   const generalError = errorCat || errorProd;
@@ -127,40 +106,6 @@ export const MenuPage = () => {
           </div>
         )}
       </Container>
-
-      {showScrollTop && (
-        <button
-          type="button"
-          onClick={scrollToTop}
-          className="btn btn-dark rounded-circle shadow position-fixed d-flex align-items-center justify-content-center"
-          style={{
-            bottom: "2rem",
-            right: "2rem",
-            width: "45px",
-            height: "45px",
-            zIndex: 1040,
-            backgroundColor: "#1a1a1a",
-            borderColor: "#1a1a1a",
-            opacity: 0.9,
-            transition: "opacity 0.2s ease-in-out",
-          }}
-          title="Torna in cima"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            fill="currentColor"
-            viewBox="0 0 16 16"
-            className="text-white"
-          >
-            <path
-              fillRule="evenodd"
-              d="M8 12a.5.5 0 0 0 .5-.5V5.707l2.146 2.147a.5.5 0 0 0 .708-.708l-3-3a.5.5 0 0 0-.708 0l-3 3a.5.5 0 1 0 .708.708L7.5 5.707V11.5a.5.5 0 0 0 .5.5z"
-            />
-          </svg>
-        </button>
-      )}
     </div>
   );
 };
