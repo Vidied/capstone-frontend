@@ -54,9 +54,12 @@ export const OrderCard: React.FC<OrderCardProps> = ({
 
   return (
     <>
-      <Card className="bg-dark text-white border-secondary mb-3 shadow-sm h-100">
-        <Card.Header className="border-secondary d-flex justify-content-between align-items-center">
-          <span className="fw-bold fs-5">
+      <Card
+        className="bg-white text-dark shadow-sm h-100 mb-3"
+        style={{ border: "1px solid #ced4da" }}
+      >
+        <Card.Header className="bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+          <span className="fw-bold fs-5" style={{ color: "#2b2b2b" }}>
             {isTable ? `Tavolo ${order.tableNumber}` : "Asporto"}
           </span>
           <Badge bg={getBadgeVariant(order.orderStatus)} text="dark">
@@ -83,14 +86,14 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 )}
             </div>
 
-            <ListGroup variant="flush" className="mb-3 rounded">
+            <ListGroup variant="flush" className="mb-3 rounded border">
               {order.items?.map((item, index) => (
                 <OrderListItem key={item.id ?? index} item={item} />
               ))}
             </ListGroup>
 
             {order.notes && (
-              <p className="small text-info mb-2">
+              <p className="small text-primary mb-2">
                 <strong>Note Ordine:</strong> {order.notes}
               </p>
             )}
@@ -107,7 +110,7 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 {onPrintTicket && (
                   <Button
                     size="sm"
-                    variant="outline-info"
+                    variant="outline-secondary"
                     className="fw-bold"
                     onClick={() => onPrintTicket(order)}
                   >
@@ -126,27 +129,24 @@ export const OrderCard: React.FC<OrderCardProps> = ({
                 )}
               </div>
             ) : (
-              /* Azioni per ordini attivi / serviti */
               <div className="d-flex gap-2 flex-wrap">
-                {(isServed || onPrintTicket) && onPrintTicket && (
+                {isServed && onPrintTicket && (
                   <Button
                     size="sm"
-                    variant="outline-info"
+                    variant="outline-dark"
                     className="fw-bold"
+                    style={{ border: "1px solid #adb5bd" }}
                     onClick={() => onPrintTicket(order)}
                   >
                     Stampa Scontrino
                   </Button>
                 )}
 
+                {/* Pulsante di avanzamento stato uniforme con variante success */}
                 <Button
                   size="sm"
-                  variant={
-                    order.orderStatus === "READY" || isServed
-                      ? "success"
-                      : "outline-success"
-                  }
-                  className="flex-grow-1 fw-bold"
+                  variant="success"
+                  className="flex-grow-1 fw-bold text-white"
                   onClick={() => onNextStatus(order.id, order.orderStatus)}
                 >
                   {getNextStatusLabel(order.orderStatus)}
@@ -168,31 +168,30 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         </Card.Body>
       </Card>
 
-      {/* Modale per Annullamento Ordine Attivo */}
       <Modal
         show={showCancelModal}
         onHide={() => setShowCancelModal(false)}
         centered
-        contentClassName="bg-dark text-white border-secondary"
+        contentClassName="bg-white text-dark shadow-sm"
+        style={{ border: "1px solid #ced4da" }}
       >
-        <Modal.Header
-          closeButton
-          closeVariant="white"
-          className="border-secondary"
-        >
-          <Modal.Title className="fs-5 text-danger">
+        <Modal.Header closeButton className="border-bottom">
+          <Modal.Title className="fs-5 text-danger fw-bold">
             Conferma Annullamento
           </Modal.Title>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="py-4">
           Sei sicuro di voler annullare l'ordine per{" "}
           <strong>
             {isTable ? `il Tavolo ${order.tableNumber}` : "l'Asporto"}
           </strong>
           ?
         </Modal.Body>
-        <Modal.Footer className="border-secondary">
-          <Button variant="secondary" onClick={() => setShowCancelModal(false)}>
+        <Modal.Footer className="border-top">
+          <Button
+            variant="outline-secondary"
+            onClick={() => setShowCancelModal(false)}
+          >
             Chiudi
           </Button>
           <Button variant="danger" onClick={handleConfirmCancel}>
@@ -201,7 +200,6 @@ export const OrderCard: React.FC<OrderCardProps> = ({
         </Modal.Footer>
       </Modal>
 
-      {/* Modale per Eliminazione Singola Ordine Completato */}
       <ConfirmDeleteModal
         show={showDeleteModal}
         title={`Elimina Ordine #${order.id}`}

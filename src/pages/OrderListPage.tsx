@@ -149,42 +149,51 @@ export const OrdersListPage: React.FC = () => {
     };
   }, [orders, selectedStatus]);
 
-  return (
-    <Container fluid className="py-4 bg-dark text-white min-vh-100">
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-        <OrderFilterHeader
-          selectedStatus={selectedStatus}
-          onStatusChange={setSelectedStatus}
+  const rightAction = useMemo(() => {
+    if (selectedStatus === "SERVED") {
+      return (
+        <Form.Check
+          type="switch"
+          id="auto-print-switch"
+          label="Stampa automatica all'incasso"
+          checked={autoPrintOnComplete}
+          onChange={handleToggleAutoPrint}
+          className="text-secondary fw-semibold mb-0"
         />
+      );
+    }
+    if (selectedStatus === "COMPLETED" && completedCount > 0) {
+      return (
+        <Button
+          variant="outline-danger"
+          size="sm"
+          onClick={() => setShowBulkDeleteModal(true)}
+        >
+          Pulisci Completati ({completedCount})
+        </Button>
+      );
+    }
+    return null;
+  }, [selectedStatus, autoPrintOnComplete, completedCount]);
 
-        <div className="d-flex align-items-center gap-3">
-          <Form.Check
-            type="switch"
-            id="auto-print-switch"
-            label="Stampa automatica all'incasso"
-            checked={autoPrintOnComplete}
-            onChange={handleToggleAutoPrint}
-            className="text-light fw-semibold"
-          />
-
-          {completedCount > 0 && (
-            <Button
-              variant="outline-danger"
-              size="sm"
-              onClick={() => setShowBulkDeleteModal(true)}
-            >
-              Pulisci Completati ({completedCount})
-            </Button>
-          )}
-        </div>
-      </div>
+  return (
+    <Container
+      fluid
+      className="py-4 min-vh-100"
+      style={{ backgroundColor: "#f7f4ee", color: "#2b2b2b" }}
+    >
+      <OrderFilterHeader
+        selectedStatus={selectedStatus}
+        onStatusChange={setSelectedStatus}
+        rightAction={rightAction}
+      />
 
       {successMessage && <Alert variant="success">{successMessage}</Alert>}
       {errorMessage && <Alert variant="danger">{errorMessage}</Alert>}
 
       {loading && orders.length === 0 ? (
         <div className="text-center py-5">
-          <Spinner animation="border" variant="light" />
+          <Spinner animation="border" variant="dark" />
         </div>
       ) : selectedStatus === "ATTIVI" ? (
         <Row className="g-3">
