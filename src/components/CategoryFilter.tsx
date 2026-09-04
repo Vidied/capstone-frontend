@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { Nav } from "react-bootstrap";
 import type { Category } from "../interfaces/Product";
 
@@ -12,33 +13,40 @@ export const CategoryFilter = ({
   selectedCategoryId,
   onSelectCategory,
 }: CategoryFilterProps) => {
+  const navRef = useRef<HTMLDivElement>(null);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (navRef.current && e.deltaY !== 0) {
+      navRef.current.scrollLeft += e.deltaY;
+    }
+  };
+
   return (
-    <Nav
-      variant="pills"
-      activeKey={
-        selectedCategoryId === null ? "all" : String(selectedCategoryId)
-      }
-      onSelect={(selectedKey) => {
-        if (selectedKey === "all" || !selectedKey) {
-          onSelectCategory(null);
-        } else {
-          onSelectCategory(Number(selectedKey));
-        }
-      }}
-      className="flex-nowrap overflow-auto pb-2"
+    <div
+      ref={navRef}
+      onWheel={handleWheel}
+      className="overflow-auto no-scrollbar category-scroll-container py-1"
     >
-      <Nav.Item>
-        <Nav.Link eventKey="all" className="px-3 fw-semibold">
-          Tutti i Piatti
-        </Nav.Link>
-      </Nav.Item>
-      {categories.map((cat) => (
-        <Nav.Item key={cat.id}>
-          <Nav.Link eventKey={String(cat.id)} className="px-3 fw-semibold">
-            {cat.name}
-          </Nav.Link>
-        </Nav.Item>
-      ))}
-    </Nav>
+      <Nav
+        variant="pills"
+        activeKey={selectedCategoryId ? String(selectedCategoryId) : ""}
+        onSelect={(selectedKey) => {
+          const id = Number(selectedKey);
+          onSelectCategory(selectedCategoryId === id ? null : id);
+        }}
+        className="custom-category-pills flex-nowrap px-3"
+      >
+        {categories.map((cat) => (
+          <Nav.Item key={cat.id}>
+            <Nav.Link
+              eventKey={String(cat.id)}
+              className="px-3 py-1.5 me-1 fw-semibold small shadow-sm"
+            >
+              {cat.name}
+            </Nav.Link>
+          </Nav.Item>
+        ))}
+      </Nav>
+    </div>
   );
 };

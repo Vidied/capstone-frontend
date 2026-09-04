@@ -4,10 +4,16 @@ import {
   type PayloadAction,
 } from "@reduxjs/toolkit";
 import { jwtDecode } from "jwt-decode";
-import type { Role, User } from "../../interfaces/User";
-import type { AuthResponse, LoginDTO } from "../../interfaces/Auth";
 import API from "../../api/axiosConfig";
-import { AxiosError } from "axios";
+import type { AuthResponse, LoginDTO } from "../../interfaces/Auth";
+import type { Role, User } from "../../interfaces/User";
+import { extractErrorMessage } from "../../utils/errorUtils";
+
+interface AuthorityObject {
+  authority: string;
+}
+
+type AuthorityItem = string | AuthorityObject;
 
 interface JwtPayLoadCustom {
   sub?: string;
@@ -15,8 +21,9 @@ interface JwtPayLoadCustom {
   email?: string;
   name?: string;
   surname?: string;
-  role?: Role;
-  authorities?: string[];
+  role?: string;
+  roles?: string[];
+  authorities?: AuthorityItem[];
   exp?: number;
 }
 
@@ -32,12 +39,29 @@ const decodeToken = (token: string): User | null => {
   try {
     const parsed = jwtDecode<JwtPayLoadCustom>(token);
 
+    let extractedRoles: Role[] = [];
+
+    if (Array.isArray(parsed.roles)) {
+      extractedRoles = parsed.roles as Role[];
+    } else if (Array.isArray(parsed.authorities)) {
+      extractedRoles = parsed.authorities.map((item: AuthorityItem) => {
+        if (typeof item === "string") {
+          return item as Role;
+        }
+        return item.authority as Role;
+      });
+    } else if (parsed.role) {
+      extractedRoles = [parsed.role as Role];
+    } else {
+      extractedRoles = ["ROLE_USER"];
+    }
+
     return {
       id: parsed.id || 0,
       email: parsed.email || parsed.sub || "",
       name: parsed.name || "",
       surname: parsed.surname || "",
-      role: (parsed.role || parsed.authorities?.[0] || "ROLE_USER") as Role,
+      roles: extractedRoles,
     };
   } catch (e) {
     console.error("Errore nella decodifica del token JWT", e);
@@ -65,13 +89,12 @@ export const loginThunk = createAsyncThunk<
     const response = await API.post<AuthResponse>("/auth/login", credentials);
     return response.data;
   } catch (err) {
-    let errorMessage = "Credenziali non valide o errore di connesione";
-
-    if (err instanceof AxiosError && err.response?.data?.message) {
-      errorMessage = err.response.data.message;
-    }
-
-    return rejectWithValue(errorMessage);
+    return rejectWithValue(
+      extractErrorMessage(
+        err,
+        "Credenziali non valide o errore di connessione",
+      ),
+    );
   }
 });
 

@@ -59,12 +59,10 @@ export const IngredientsTable: React.FC<IngredientsTableProps> = ({
                 </td>
 
                 <td className="text-end">
-                  <td className="text-end">
-                    <ActionButtons
-                      onEdit={() => onEdit(ing)}
-                      onDelete={() => onDelete(ing.id)}
-                    />
-                  </td>
+                  <ActionButtons
+                    onEdit={() => onEdit(ing)}
+                    onDelete={() => onDelete(ing.id)}
+                  />
                 </td>
               </tr>
             ))}

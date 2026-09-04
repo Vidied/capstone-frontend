@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
+import { Alert, Container, Spinner } from "react-bootstrap";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
+import { CategoryFilter } from "../components/CategoryFilter";
+import { ProductCard } from "../components/ProductCard";
+import { SearchBar } from "../components/SearchBar";
 import { fetchCategoriesThunk } from "../features/slices/categorySlice";
 import { fetchProductsThunk } from "../features/slices/productSlice";
-import { CategoryFilter } from "../components/CategoryFilter";
-import { SearchBar } from "../components/SearchBar";
-import { Alert, Container, Spinner } from "react-bootstrap";
-import { ProductCard } from "../components/ProductCard";
-import { Link } from "react-router-dom";
 
 export const MenuPage = () => {
   const dispatch = useAppDispatch();
@@ -15,6 +14,7 @@ export const MenuPage = () => {
     null,
   );
   const [searchTerm, setSearchTerm] = useState("");
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const {
     categories,
@@ -33,11 +33,28 @@ export const MenuPage = () => {
     dispatch(fetchProductsThunk());
   }, [dispatch]);
 
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 300) {
+        setShowScrollTop(true);
+      } else {
+        setShowScrollTop(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
   const isLoading = loadingCat || loadingProd;
   const generalError = errorCat || errorProd;
-
-  //Filtro per la ricerca dei prodotti ritorna un prodotto che combacia sia in categoria selezionata
-  //al momento della ricerca che per parte del testo scritto
 
   const filteredProducts = products.filter((product) => {
     const matchCategory =
@@ -59,60 +76,91 @@ export const MenuPage = () => {
         ? ingredientName.toLowerCase().includes(query)
         : false;
     });
-    //Un po' un extra ma se un cliente si ricorda solo della descrizione di un prodotto specifico questo lo aiuterà nella ricerca
+
     const matchesDescription = product.description
       ? product.description.toLowerCase().includes(query)
       : false;
 
-    //Finchè ritorna true almeno uno di questi 3 controlli il prodotto verrà visualizzato(ovviamente dopo aver tornato true al controllo categoria)
     const matchSearch = matchesName || matchesIngredient || matchesDescription;
 
     return matchCategory && matchSearch;
   });
 
   return (
-    <Container>
-      <div>
-        <Link to="/create-order">Crea comanda</Link>
-      </div>
-      <div>
-        <CategoryFilter
-          categories={categories}
-          selectedCategoryId={selectedCategoryId}
-          onSelectCategory={(id) => setSelectedCategoryId(id)}
-        />
-      </div>
-      <div>
-        <SearchBar
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          placeholder="Cerca nel nostro menu!"
-        />
-      </div>
-
-      {isLoading && (
-        <div className="text-center my-5 py-5">
-          <Spinner animation="border" variant="light" />
+    <div className="menu-page-bg min-vh-100 py-4 position-relative">
+      <Container>
+        <div className="mb-3">
+          <SearchBar
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            placeholder="Cerca piatto o ingrediente..."
+          />
         </div>
-      )}
 
-      {generalError && <Alert variant="danger">{generalError}</Alert>}
-
-      {/* Nel caso non ci siano ne errori ne caricamenti, potrò mostrare le card dei prodotti */}
-      {!isLoading && !generalError && (
-        <div>
-          {filteredProducts.length === 0 ? (
-            //Nel caso non ci siano prodotti dopo il filtraggio lancio un messaggio generico per la mancanza di prodotti
-            <Alert variant="warning" className="text-center">
-              Nessun piatto trovato per i filtri selezionati
-            </Alert>
-          ) : (
-            filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))
-          )}
+        <div className="mb-4 pb-2 border-bottom border-dark-subtle">
+          <CategoryFilter
+            categories={categories}
+            selectedCategoryId={selectedCategoryId}
+            onSelectCategory={(id) => setSelectedCategoryId(id)}
+          />
         </div>
+
+        {isLoading && (
+          <div className="text-center my-5 py-5">
+            <Spinner animation="border" variant="dark" />
+          </div>
+        )}
+
+        {generalError && <Alert variant="danger">{generalError}</Alert>}
+
+        {!isLoading && !generalError && (
+          <div>
+            {filteredProducts.length === 0 ? (
+              <Alert variant="warning" className="text-center mt-3">
+                Nessun piatto trovato per i filtri selezionati
+              </Alert>
+            ) : (
+              filteredProducts.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))
+            )}
+          </div>
+        )}
+      </Container>
+
+      {showScrollTop && (
+        <button
+          type="button"
+          onClick={scrollToTop}
+          className="btn btn-dark rounded-circle shadow position-fixed d-flex align-items-center justify-content-center"
+          style={{
+            bottom: "2rem",
+            right: "2rem",
+            width: "45px",
+            height: "45px",
+            zIndex: 1040,
+            backgroundColor: "#1a1a1a",
+            borderColor: "#1a1a1a",
+            opacity: 0.9,
+            transition: "opacity 0.2s ease-in-out",
+          }}
+          title="Torna in cima"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            fill="currentColor"
+            viewBox="0 0 16 16"
+            className="text-white"
+          >
+            <path
+              fillRule="evenodd"
+              d="M8 12a.5.5 0 0 0 .5-.5V5.707l2.146 2.147a.5.5 0 0 0 .708-.708l-3-3a.5.5 0 0 0-.708 0l-3 3a.5.5 0 1 0 .708.708L7.5 5.707V11.5a.5.5 0 0 0 .5.5z"
+            />
+          </svg>
+        </button>
       )}
-    </Container>
+    </div>
   );
 };
