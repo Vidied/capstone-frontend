@@ -21,23 +21,36 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
   onToggleAvailability,
 }) => {
   return (
-    <Card bg="dark" className="border-secondary text-white">
-      <Card.Header className="d-flex justify-content-between align-items-center border-secondary">
-        <h5 className="mb-0">Elenco Prodotti</h5>
-        <Button variant="success" size="sm" onClick={onAddNew}>
+    <Card
+      className="shadow-sm text-dark bg-white"
+      style={{ border: "1px solid #ced4da" }}
+    >
+      <Card.Header className="d-flex justify-content-between align-items-center bg-white border-bottom py-3">
+        <h5 className="mb-0 fw-bold" style={{ color: "#2b2b2b" }}>
+          Elenco Prodotti
+        </h5>
+        <Button
+          variant="success"
+          size="sm"
+          onClick={onAddNew}
+          className="fw-bold"
+        >
           + Nuovo Prodotto
         </Button>
       </Card.Header>
       <Card.Body className="p-0">
-        <Table responsive variant="dark" hover className="mb-0 align-middle">
+        <Table responsive hover className="mb-0 align-middle text-dark">
           <thead>
-            <tr className="border-secondary text-muted">
-              <th>Nome</th>
-              <th className="d-none d-md-table-cell">Categoria</th>
-              <th>Prezzo</th>
-              <th className="d-none d-md-table-cell">Ingredienti</th>
-              <th className="text-center">Disponibile</th>
-              <th className="text-end" style={{ width: "1%" }}>
+            <tr
+              className="text-muted border-bottom"
+              style={{ backgroundColor: "#faf8f5" }}
+            >
+              <th className="py-3 ps-3">Nome</th>
+              <th className="d-none d-md-table-cell py-3">Categoria</th>
+              <th className="py-3">Prezzo</th>
+              <th className="d-none d-md-table-cell py-3">Ingredienti</th>
+              <th className="text-center py-3">Disponibile</th>
+              <th className="text-end py-3 pe-3" style={{ width: "1%" }}>
                 Azioni
               </th>
             </tr>
@@ -59,15 +72,17 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
                 product.ingredients?.some((ing) => !ing.isAvailable);
 
               return (
-                <tr key={product.id} className="border-secondary">
-                  <td className="fw-bold" style={{ minWidth: "120px" }}>
+                <tr key={product.id} className="border-bottom">
+                  <td className="fw-bold ps-3" style={{ minWidth: "120px" }}>
                     <span className="text-truncate-2" title={product.name}>
                       {product.name}
                     </span>
                   </td>
 
                   <td className="d-none d-md-table-cell">
-                    <Badge bg="secondary">{categoryName}</Badge>
+                    <Badge bg="light" text="dark" className="border">
+                      {categoryName}
+                    </Badge>
                   </td>
 
                   <td className="text-success fw-bold text-nowrap">
@@ -80,7 +95,8 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
                         {ingredientsList.map((ingName, index) => (
                           <Badge
                             key={`${product.id}-ing-${index}`}
-                            bg="dark"
+                            bg="light"
+                            text="dark"
                             className="border border-secondary"
                           >
                             {ingName}
@@ -107,7 +123,7 @@ export const ProductsTable: React.FC<ProductsTableProps> = ({
                     />
                   </td>
 
-                  <td className="text-end">
+                  <td className="text-end pe-3">
                     <ActionButtons
                       onEdit={() => onEdit(product)}
                       onDelete={() => onDelete(product.id)}

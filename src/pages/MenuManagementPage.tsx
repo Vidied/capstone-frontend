@@ -12,6 +12,7 @@ import {
 } from "react-bootstrap";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { CategoryModal } from "../components/CategoryModal";
+import { ConfirmDeleteModal } from "../components/ConfirmDeleteModal";
 import { IngredientModal } from "../components/IngredientModal";
 import { ProductModal } from "../components/ProductModal";
 import { SearchBar } from "../components/SearchBar";
@@ -57,6 +58,19 @@ export const MenuManagementPage: React.FC = () => {
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [showToast, setShowToast] = useState<boolean>(false);
+
+  // Stato per il modale di conferma eliminazione unificato
+  const [deleteModalState, setDeleteModalState] = useState<{
+    show: boolean;
+    type: "product" | "ingredient" | "category" | null;
+    id: number | null;
+    name: string;
+  }>({
+    show: false,
+    type: null,
+    id: null,
+    name: "",
+  });
 
   const getErrorMessage = (err: unknown, defaultMsg: string): string => {
     if (typeof err === "string") return err;
@@ -182,16 +196,15 @@ export const MenuManagementPage: React.FC = () => {
     }
   };
 
-  const handleDeleteProduct = async (id: number) => {
-    if (window.confirm("Sei sicuro di voler eliminare questo prodotto?")) {
-      try {
-        await dispatch(deleteProductThunk(id)).unwrap();
-      } catch (err: unknown) {
-        triggerErrorToast(
-          `Errore durante l'eliminazione: ${getErrorMessage(err, "Errore sconosciuto")}`,
-        );
-      }
-    }
+  // Apertura modale di conferma per Prodotto
+  const handleDeleteProductPrompt = (id: number) => {
+    const prod = products.find((p) => p.id === id);
+    setDeleteModalState({
+      show: true,
+      type: "product",
+      id,
+      name: prod?.name || "questo prodotto",
+    });
   };
 
   const handleSaveCategory = async (dto: CategoryRequestDTO, id?: number) => {
@@ -212,18 +225,15 @@ export const MenuManagementPage: React.FC = () => {
     }
   };
 
-  const handleDeleteCategory = async (id: number) => {
-    if (window.confirm("Sei sicuro di voler eliminare questa categoria?")) {
-      try {
-        await dispatch(deleteCategoryThunk(id)).unwrap();
-        dispatch(fetchCategoriesThunk());
-        dispatch(fetchProductsThunk());
-      } catch (err: unknown) {
-        triggerErrorToast(
-          `Errore durante l'eliminazione: ${getErrorMessage(err, "Errore sconosciuto")}`,
-        );
-      }
-    }
+  // Apertura modale di conferma per Categoria
+  const handleDeleteCategoryPrompt = (id: number) => {
+    const cat = categories.find((c) => c.id === id);
+    setDeleteModalState({
+      show: true,
+      type: "category",
+      id,
+      name: cat?.name || "questa categoria",
+    });
   };
 
   const handleSaveIngredient = async (
@@ -247,16 +257,39 @@ export const MenuManagementPage: React.FC = () => {
     }
   };
 
-  const handleDeleteIngredient = async (id: number) => {
-    if (window.confirm("Sei sicuro di voler eliminare questo ingrediente?")) {
-      try {
+  // Apertura modale di conferma per Ingrediente
+  const handleDeleteIngredientPrompt = (id: number) => {
+    const ing = ingredients.find((i) => i.id === id);
+    setDeleteModalState({
+      show: true,
+      type: "ingredient",
+      id,
+      name: ing?.name || "questo ingrediente",
+    });
+  };
+
+  // Esecuzione effettiva dell'eliminazione confermata
+  const handleConfirmDelete = async () => {
+    const { type, id } = deleteModalState;
+    if (id === null || !type) return;
+
+    try {
+      if (type === "product") {
+        await dispatch(deleteProductThunk(id)).unwrap();
+      } else if (type === "category") {
+        await dispatch(deleteCategoryThunk(id)).unwrap();
+        dispatch(fetchCategoriesThunk());
+        dispatch(fetchProductsThunk());
+      } else if (type === "ingredient") {
         await dispatch(deleteIngredientThunk(id)).unwrap();
         dispatch(fetchProductsThunk());
-      } catch (err: unknown) {
-        triggerErrorToast(
-          `Errore durante l'eliminazione: ${getErrorMessage(err, "Errore sconosciuto")}`,
-        );
       }
+    } catch (err: unknown) {
+      triggerErrorToast(
+        `Errore durante l'eliminazione: ${getErrorMessage(err, "Errore sconosciuto")}`,
+      );
+    } finally {
+      setDeleteModalState({ show: false, type: null, id: null, name: "" });
     }
   };
 
@@ -266,7 +299,8 @@ export const MenuManagementPage: React.FC = () => {
   return (
     <Container
       fluid
-      className="py-4 bg-dark text-white min-vh-100 position-relative"
+      className="py-4 min-vh-100 position-relative"
+      style={{ backgroundColor: "#f7f4ee", color: "#2b2b2b" }}
     >
       <ToastContainer
         position="top-end"
@@ -281,7 +315,7 @@ export const MenuManagementPage: React.FC = () => {
           autohide
         >
           <Toast.Header closeButton>
-            <strong className="me-auto text-danger">Attenzione</strong>
+            <strong className="me-auto text-white">Attenzione</strong>
           </Toast.Header>
           <Toast.Body className="text-white">{toastMessage}</Toast.Body>
         </Toast>
@@ -289,11 +323,13 @@ export const MenuManagementPage: React.FC = () => {
 
       <Row className="mb-4 align-items-center">
         <Col md={6}>
-          <h2 className="mb-1">Gestione Menu & Magazzino</h2>
+          <h2 className="mb-1 fw-bold" style={{ color: "#2b2b2b" }}>
+            Gestione Menu & Magazzino
+          </h2>
         </Col>
         <Col
           md={6}
-          className="d-flex justify-content-start justify-content-end align-items-center mt-3 mt-md-0 gap-3"
+          className="d-flex justify-content-start justify-content-md-end align-items-center mt-3 mt-md-0 gap-3"
         >
           <div style={{ maxWidth: "300px", width: "100%" }}>
             <SearchBar
@@ -302,14 +338,12 @@ export const MenuManagementPage: React.FC = () => {
               placeholder={getSearchPlaceholder(activeTab)}
             />
           </div>
-          {isLoading && (
-            <Spinner animation="border" variant="light" size="sm" />
-          )}
+          {isLoading && <Spinner animation="border" variant="dark" size="sm" />}
         </Col>
       </Row>
 
       {globalError && (
-        <Alert variant="danger" className="mb-4">
+        <Alert variant="danger" className="mb-4 shadow-sm">
           {globalError}
         </Alert>
       )}
@@ -317,7 +351,7 @@ export const MenuManagementPage: React.FC = () => {
       <Tabs
         activeKey={activeTab}
         onSelect={handleTabSelect}
-        className="mb-4 border-secondary custom-tabs"
+        className="mb-4 border-bottom"
       >
         <Tab
           eventKey="products"
@@ -334,7 +368,7 @@ export const MenuManagementPage: React.FC = () => {
               setEditingProduct(product);
               setShowProductModal(true);
             }}
-            onDelete={handleDeleteProduct}
+            onDelete={handleDeleteProductPrompt}
             onToggleAvailability={handleToggleProductAvailability}
           />
         </Tab>
@@ -354,7 +388,7 @@ export const MenuManagementPage: React.FC = () => {
               setEditingIngredient(ingredient);
               setShowIngredientModal(true);
             }}
-            onDelete={handleDeleteIngredient}
+            onDelete={handleDeleteIngredientPrompt}
             onToggleAvailability={handleToggleIngredientAvailability}
           />
         </Tab>
@@ -374,7 +408,7 @@ export const MenuManagementPage: React.FC = () => {
               setEditingCategory(category);
               setShowCategoryModal(true);
             }}
-            onDelete={handleDeleteCategory}
+            onDelete={handleDeleteCategoryPrompt}
           />
         </Tab>
       </Tabs>
@@ -413,6 +447,17 @@ export const MenuManagementPage: React.FC = () => {
           ingredientToEdit={editingIngredient}
         />
       )}
+
+      {/* Modale unificato di conferma eliminazione */}
+      <ConfirmDeleteModal
+        show={deleteModalState.show}
+        onHide={() =>
+          setDeleteModalState({ show: false, type: null, id: null, name: "" })
+        }
+        onConfirm={handleConfirmDelete}
+        title="Conferma Eliminazione"
+        message={`Sei sicuro di voler eliminare "${deleteModalState.name}"? Questa azione non può essere annullata.`}
+      />
     </Container>
   );
 };

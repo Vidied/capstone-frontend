@@ -9,6 +9,10 @@ interface ProductCardProps {
 export const ProductCard = ({ product }: ProductCardProps) => {
   const [showModal, setShowModal] = useState(false);
 
+  if (product.isAvailable === false) {
+    return null;
+  }
+
   const hasIngredients =
     product.ingredientNames && product.ingredientNames.length > 0;
   const hasDescription =

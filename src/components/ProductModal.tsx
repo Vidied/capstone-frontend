@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
-
 import type {
-  ProductRequestDTO,
   Category,
   Ingredient,
   Product,
+  ProductRequestDTO,
 } from "../interfaces/Product";
 
 interface ProductModalProps {
@@ -25,87 +24,64 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   categories,
   ingredients,
 }) => {
-  const [name, setName] = useState<string>("");
-  const [description, setDescription] = useState<string>("");
-  const [price, setPrice] = useState<string | number>("");
-  const [isAvailable, setIsAvailable] = useState<boolean>(true);
-  const [categoryId, setCategoryId] = useState<number | string>("");
-  const [selectedIngredientIds, setSelectedIngredientIds] = useState<number[]>(
-    [],
+  const [name, setName] = useState<string>(productToEdit?.name ?? "");
+  const [description, setDescription] = useState<string>(
+    productToEdit?.description ?? "",
+  );
+  const [price, setPrice] = useState<string | number>(
+    productToEdit?.price ?? "",
+  );
+  const [isAvailable, setIsAvailable] = useState<boolean>(
+    productToEdit?.isAvailable ?? true,
+  );
+  const [categoryId, setCategoryId] = useState<number | string>(
+    productToEdit?.categoryId || productToEdit?.category?.id || "",
   );
 
-  useEffect(() => {
-    if (productToEdit) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setName(productToEdit.name);
-      setDescription(productToEdit.description || "");
-      setPrice(productToEdit.price);
-      setIsAvailable(productToEdit.isAvailable ?? true);
-      setCategoryId(
-        productToEdit.categoryId || productToEdit.category?.id || "",
+  // Inizializzazione diretta degli ID degli ingredienti senza useEffect a cascata
+  const initialIngredientIds = (() => {
+    if (!productToEdit) return [];
+    const rawRecord = productToEdit as unknown as Record<string, unknown>;
+    const rawList = rawRecord.ingredientNames ?? rawRecord.ingredients ?? [];
+    let targetList: unknown[] = Array.isArray(rawList) ? rawList : [];
+
+    if (targetList.length === 0) {
+      const foundNonEmptyArray = Object.values(rawRecord).find(
+        (val) => Array.isArray(val) && val.length > 0,
       );
-
-      const rawRecord = productToEdit as unknown as Record<string, unknown>;
-
-      // 1. Prendi la lista ingredientNames dal DTO o qualsiasi array NON vuoto
-      const rawList = rawRecord.ingredientNames ?? rawRecord.ingredients ?? [];
-
-      let targetList: unknown[] = Array.isArray(rawList) ? rawList : [];
-
-      // Fallback: se la chiave specifica è vuota, cerca il primo array con elementi nell'oggetto
-      if (targetList.length === 0) {
-        const foundNonEmptyArray = Object.values(rawRecord).find(
-          (val) => Array.isArray(val) && val.length > 0,
-        );
-        if (foundNonEmptyArray) {
-          targetList = foundNonEmptyArray as unknown[];
-        }
+      if (foundNonEmptyArray) {
+        targetList = foundNonEmptyArray as unknown[];
       }
+    }
 
-      // 2. Mappa i nomi restituiti dal backend con la prop `ingredients` per recuperarne gli ID
-      const extractedIds: number[] = targetList
-        .map((item: unknown): number | null => {
-          // Stringa diretta (es. "Basilico Fresco") dal DTO
-          if (typeof item === "string") {
-            const nameTrimmed = item.trim().toLowerCase();
+    return targetList
+      .map((item: unknown): number | null => {
+        if (typeof item === "string") {
+          const nameTrimmed = item.trim().toLowerCase();
+          const found = ingredients.find(
+            (ing) => ing.name.trim().toLowerCase() === nameTrimmed,
+          );
+          return found ? found.id : null;
+        }
+        if (typeof item === "number") return item;
+        if (typeof item === "object" && item !== null) {
+          const obj = item as Record<string, unknown>;
+          if (typeof obj.id === "number") return obj.id;
+          if (typeof obj.name === "string") {
+            const nameTrimmed = obj.name.trim().toLowerCase();
             const found = ingredients.find(
               (ing) => ing.name.trim().toLowerCase() === nameTrimmed,
             );
             return found ? found.id : null;
           }
+        }
+        return null;
+      })
+      .filter((id): id is number => id !== null);
+  })();
 
-          // Caso ID numerico diretto
-          if (typeof item === "number") {
-            return item;
-          }
-
-          // Oggetto con id o name
-          if (typeof item === "object" && item !== null) {
-            const obj = item as Record<string, unknown>;
-            if (typeof obj.id === "number") return obj.id;
-            if (typeof obj.name === "string") {
-              const nameTrimmed = obj.name.trim().toLowerCase();
-              const found = ingredients.find(
-                (ing) => ing.name.trim().toLowerCase() === nameTrimmed,
-              );
-              return found ? found.id : null;
-            }
-          }
-
-          return null;
-        })
-        .filter((id): id is number => id !== null);
-
-      setSelectedIngredientIds(extractedIds);
-    } else {
-      setName("");
-      setDescription("");
-      setPrice("");
-      setIsAvailable(true);
-      setCategoryId("");
-      setSelectedIngredientIds([]);
-    }
-  }, [productToEdit, show, ingredients]);
+  const [selectedIngredientIds, setSelectedIngredientIds] =
+    useState<number[]>(initialIngredientIds);
 
   const handleIngredientToggle = (id: number) => {
     setSelectedIngredientIds((prev) =>
@@ -131,55 +107,54 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered data-bs-theme="dark">
-      <Modal.Header closeButton className="border-secondary">
-        <Modal.Title>
+    <Modal show={show} onHide={onHide} centered>
+      <Modal.Header closeButton className="bg-white border-bottom py-3">
+        <Modal.Title className="fw-bold" style={{ color: "#2b2b2b" }}>
           {productToEdit ? "Modifica Prodotto" : "Nuovo Prodotto"}
         </Modal.Title>
       </Modal.Header>
       <Form onSubmit={handleSubmit}>
-        <Modal.Body>
+        <Modal.Body className="bg-white text-dark py-4">
           <Form.Group className="mb-3">
-            <Form.Label>Nome Prodotto</Form.Label>
+            <Form.Label className="fw-bold">Nome Prodotto</Form.Label>
             <Form.Control
               type="text"
               required
+              placeholder="es. Pizza Margherita"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="bg-dark text-white border-secondary"
               autoFocus
             />
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Descrizione</Form.Label>
+            <Form.Label className="fw-bold">Descrizione</Form.Label>
             <Form.Control
               as="textarea"
               rows={2}
+              placeholder="Descrivi gli ingredienti o la preparazione..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="bg-dark text-white border-secondary"
             />
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Prezzo (€)</Form.Label>
+            <Form.Label className="fw-bold">Prezzo (€)</Form.Label>
             <Form.Control
               type="number"
               step="0.01"
               required
+              placeholder="0.00"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
-              className="bg-dark text-white border-secondary"
             />
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Categoria</Form.Label>
+            <Form.Label className="fw-bold">Categoria</Form.Label>
             <Form.Select
               value={categoryId}
               onChange={(e) => setCategoryId(e.target.value)}
-              className="bg-dark text-white border-secondary"
               required
             >
               <option value="">Seleziona Categoria...</option>
@@ -192,8 +167,8 @@ export const ProductModal: React.FC<ProductModalProps> = ({
           </Form.Group>
 
           <Form.Group className="mb-3">
-            <Form.Label>Ingredienti</Form.Label>
-            <div className="d-flex flex-wrap gap-2 border border-secondary p-2 rounded">
+            <Form.Label className="fw-bold">Ingredienti</Form.Label>
+            <div className="d-flex flex-wrap gap-2 border p-3 rounded bg-light">
               {ingredients.map((ing) => (
                 <Form.Check
                   key={ing.id}
@@ -204,6 +179,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                   onChange={() => handleIngredientToggle(ing.id)}
                 />
               ))}
+              {ingredients.length === 0 && (
+                <span className="text-muted small">
+                  Nessun ingrediente disponibile.
+                </span>
+              )}
             </div>
           </Form.Group>
 
@@ -217,11 +197,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             />
           </Form.Group>
         </Modal.Body>
-        <Modal.Footer className="border-secondary">
-          <Button variant="secondary" onClick={onHide}>
+        <Modal.Footer className="bg-white border-top">
+          <Button variant="outline-secondary" onClick={onHide}>
             Annulla
           </Button>
-          <Button variant="success" type="submit">
+          <Button variant="success" type="submit" className="fw-bold">
             Salva
           </Button>
         </Modal.Footer>

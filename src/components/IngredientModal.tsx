@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { Button, Form, Modal } from "react-bootstrap";
 import type { Ingredient, IngredientRequestDTO } from "../interfaces/Product";
 
@@ -15,19 +15,10 @@ export const IngredientModal: React.FC<IngredientModalProps> = ({
   onSubmit,
   ingredientToEdit,
 }) => {
-  const [name, setName] = useState<string>("");
-  const [isAvailable, setIsAvailable] = useState<boolean>(true);
-
-  useEffect(() => {
-    if (ingredientToEdit) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setName(ingredientToEdit.name);
-      setIsAvailable(ingredientToEdit.isAvailable ?? true);
-    } else {
-      setName("");
-      setIsAvailable(true);
-    }
-  }, [ingredientToEdit, show]);
+  const [name, setName] = useState<string>(ingredientToEdit?.name ?? "");
+  const [isAvailable, setIsAvailable] = useState<boolean>(
+    ingredientToEdit?.isAvailable ?? true,
+  );
 
   const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -38,23 +29,22 @@ export const IngredientModal: React.FC<IngredientModalProps> = ({
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered data-bs-theme="dark">
-      <Modal.Header closeButton className="bg-dark text-white border-secondary">
-        <Modal.Title>
+    <Modal show={show} onHide={onHide} centered>
+      <Modal.Header closeButton className="bg-white border-bottom py-3">
+        <Modal.Title className="fw-bold" style={{ color: "#2b2b2b" }}>
           {ingredientToEdit ? "Modifica Ingrediente" : "Nuovo Ingrediente"}
         </Modal.Title>
       </Modal.Header>
       <Form onSubmit={handleSubmit}>
-        <Modal.Body className="bg-dark text-white">
+        <Modal.Body className="bg-white text-dark py-4">
           <Form.Group className="mb-3">
-            <Form.Label>Nome Ingrediente</Form.Label>
+            <Form.Label className="fw-bold">Nome Ingrediente</Form.Label>
             <Form.Control
               type="text"
               required
               placeholder="es. Mozzarella di Bufala DOP, Basilico..."
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="bg-secondary text-white border-0"
               autoFocus
             />
           </Form.Group>
@@ -67,11 +57,11 @@ export const IngredientModal: React.FC<IngredientModalProps> = ({
             onChange={(e) => setIsAvailable(e.target.checked)}
           />
         </Modal.Body>
-        <Modal.Footer className="bg-dark border-secondary">
+        <Modal.Footer className="bg-white border-top">
           <Button variant="outline-secondary" onClick={onHide}>
             Annulla
           </Button>
-          <Button variant="success" type="submit">
+          <Button variant="success" type="submit" className="fw-bold">
             Salva
           </Button>
         </Modal.Footer>

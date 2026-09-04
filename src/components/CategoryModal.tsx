@@ -39,34 +39,32 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
   };
 
   return (
-    <Modal show={show} onHide={onHide} centered data-bs-theme="dark">
-      <Modal.Header closeButton className="bg-dark text-white border-secondary">
-        <Modal.Title>
+    <Modal show={show} onHide={onHide} centered>
+      <Modal.Header closeButton className="bg-white border-bottom py-3">
+        <Modal.Title className="fw-bold" style={{ color: "#2b2b2b" }}>
           {categoryToEdit ? "Modifica Categoria" : "Nuova Categoria"}
         </Modal.Title>
       </Modal.Header>
       <Form onSubmit={handleSubmit}>
-        <Modal.Body className="bg-dark text-white">
+        <Modal.Body className="bg-white text-dark py-4">
           <Form.Group className="mb-3">
-            <Form.Label>Nome Categoria</Form.Label>
+            <Form.Label className="fw-bold">Nome Categoria</Form.Label>
             <Form.Control
               type="text"
               required
               placeholder="es. Pizze Speciali, Bevande..."
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="bg-secondary text-white border-0"
               autoFocus
             />
           </Form.Group>
 
           {categoryToEdit && (
             <Form.Group className="mb-3">
-              <Form.Label>Scambia Posizione Con</Form.Label>
+              <Form.Label className="fw-bold">Scambia Posizione Con</Form.Label>
               <Form.Select
                 value={displayOrder}
                 onChange={(e) => setDisplayOrder(e.target.value)}
-                className="bg-secondary text-white border-0"
               >
                 <option value="">
                   Nessuno scambio (mantieni posizione corrente #
@@ -93,11 +91,11 @@ export const CategoryModal: React.FC<CategoryModalProps> = ({
             </Form.Group>
           )}
         </Modal.Body>
-        <Modal.Footer className="bg-dark border-secondary">
+        <Modal.Footer className="bg-white border-top">
           <Button variant="outline-secondary" onClick={onHide}>
             Annulla
           </Button>
-          <Button variant="success" type="submit">
+          <Button variant="success" type="submit" className="fw-bold">
             Salva
           </Button>
         </Modal.Footer>
