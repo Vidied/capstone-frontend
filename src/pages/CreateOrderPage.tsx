@@ -51,7 +51,6 @@ export const CreateOrderPage: React.FC = () => {
     };
   }, [dispatch]);
 
-  // Cerca ordine attivo (senza CANCELLED per evitare TS2367)
   const activeOrderForTable = useMemo(() => {
     if (orderType !== "TAVOLO" || !tableNumber) return null;
     const tableNum = Number(tableNumber);
@@ -60,7 +59,6 @@ export const CreateOrderPage: React.FC = () => {
     );
   }, [orders, orderType, tableNumber]);
 
-  // Gestione cambio numero di tavolo e recupero automatico coperti
   const handleTableChange = (value: string) => {
     setTableNumber(value);
     const tableNum = Number(value);
@@ -88,6 +86,7 @@ export const CreateOrderPage: React.FC = () => {
   const availableCategories = Array.from(
     new Set(
       products
+        .filter((p) => p.isAvailable)
         .map((p) => p.categoryName)
         .filter((category): category is string => Boolean(category)),
     ),
@@ -209,6 +208,8 @@ export const CreateOrderPage: React.FC = () => {
   };
 
   const filteredProducts = products.filter((p) => {
+    if (!p.isAvailable) return false;
+
     const query = debouncedSearchQuery.toLowerCase();
     const productName = (p.name || "").toLowerCase();
     const matchName = productName.includes(query);
@@ -253,38 +254,34 @@ export const CreateOrderPage: React.FC = () => {
         </Alert>
       )}
 
+      {/* Barra di ricerca e filtro categorie sempre in alto */}
+      <Card className="bg-dark text-white border-secondary mb-3">
+        <Card.Body>
+          <Row className="g-2">
+            <Col md={6}>
+              <SearchBar
+                searchTerm={searchQuery}
+                onSearchChange={setSearchQuery}
+                placeholder="Cerca piatto..."
+              />
+            </Col>
+            <Col md={6}>
+              <CategorySelect
+                selectedCategory={selectedCategory}
+                categories={availableCategories}
+                onCategoryChange={setSelectedCategory}
+              />
+            </Col>
+          </Row>
+        </Card.Body>
+      </Card>
+
       <Row>
-        <Col md={7} className="mb-4">
-          <Card className="bg-dark text-white border-secondary mb-3">
-            <Card.Body>
-              <Row className="g-2">
-                <Col md={6}>
-                  <SearchBar
-                    searchTerm={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    placeholder="Cerca piatto..."
-                  />
-                </Col>
-                <Col md={6}>
-                  <CategorySelect
-                    selectedCategory={selectedCategory}
-                    categories={availableCategories}
-                    onCategoryChange={setSelectedCategory}
-                  />
-                </Col>
-              </Row>
-            </Card.Body>
-          </Card>
-
-          <ProductGrid
-            products={filteredProducts}
-            isLoading={productsLoading}
-            error={productsError}
-            onAddToCart={handleAddToCart}
-          />
-        </Col>
-
-        <Col md={5}>
+        {/*
+          Su Mobile (sm e inferiori): OrderSummary appare PER PRIMO (order-1)
+          Su Desktop (md e superiori): OrderSummary appare a DESTRA (order-md-2)
+        */}
+        <Col md={5} className="order-1 order-md-2 mb-4">
           <OrderSummary
             cart={cart}
             tableNumber={tableNumber}
@@ -300,6 +297,19 @@ export const CreateOrderPage: React.FC = () => {
             onRemoveItem={handleRemoveItemByIndex}
             onSubmitOrder={handleSubmitOrder}
             isSubmitting={isSubmitting}
+          />
+        </Col>
+
+        {/*
+          Su Mobile (sm e inferiori): ProductGrid appare DOPO lo Summary (order-2)
+          Su Desktop (md e superiori): ProductGrid appare a SINISTRA (order-md-1)
+        */}
+        <Col md={7} className="order-2 order-md-1 mb-4">
+          <ProductGrid
+            products={filteredProducts}
+            isLoading={productsLoading}
+            error={productsError}
+            onAddToCart={handleAddToCart}
           />
         </Col>
       </Row>
