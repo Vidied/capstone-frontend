@@ -1,52 +1,78 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Alert, Col, Container, Row, Spinner } from "react-bootstrap";
+import {
+  Alert,
+  Button,
+  Col,
+  Container,
+  Form,
+  Row,
+  Spinner,
+} from "react-bootstrap";
 import { useAppDispatch, useAppSelector } from "../app/hooks";
 import { AttiviColumn } from "../components/AttiviColumn";
+import { ConfirmDeleteModal } from "../components/ConfirmDeleteModal";
 import { OrderCard } from "../components/OrderCard";
 import { OrderFilterHeader } from "../components/OrderFilterHeader";
 import {
-  appendItemsThunk,
   clearOrderMessages,
-  deleteOrderThunk,
-  fetchOrderThunk,
+  deleteCompletedOrdersThunk,
+  deleteOrdersThunk,
+  fetchOrdersThunk,
   updateOrderStatusThunk,
 } from "../features/slices/orderSlice";
-import type { OrderItem, OrderStatus, OrderType } from "../interfaces/Order";
+import type { Order, OrderStatus } from "../interfaces/Order";
 import {
   printCancellationTicket,
-  printTickets,
-  splitItemsByDestination,
+  printFullOrderTicket,
 } from "../utils/printer";
 
 export const OrdersListPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { orders, loading, error, successMessage } = useAppSelector(
+
+  const { orders, loading, errorMessage, successMessage } = useAppSelector(
     (state) => state.orders,
   );
   const [selectedStatus, setSelectedStatus] = useState<string>("ATTIVI");
+  const [showBulkDeleteModal, setShowBulkDeleteModal] =
+    useState<boolean>(false);
 
-  // Fetch iniziale con auto aggiornamento ogni 10 secondi
+  const [autoPrintOnComplete, setAutoPrintOnComplete] = useState<boolean>(
+    () => localStorage.getItem("autoPrintOnComplete") === "true",
+  );
+
+  const handleToggleAutoPrint = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setAutoPrintOnComplete(checked);
+    localStorage.setItem("autoPrintOnComplete", String(checked));
+  };
+
   useEffect(() => {
-    dispatch(fetchOrderThunk());
+    dispatch(fetchOrdersThunk());
 
     const intervalId = setInterval(() => {
-      dispatch(fetchOrderThunk());
+      dispatch(fetchOrdersThunk());
     }, 10000);
 
     return () => clearInterval(intervalId);
   }, [dispatch]);
 
-  // Auto chiusura delle notifiche
   useEffect(() => {
-    if (successMessage || error) {
+    if (successMessage || errorMessage) {
       const timer = setTimeout(() => {
         dispatch(clearOrderMessages());
       }, 4000);
       return () => clearTimeout(timer);
     }
-  }, [successMessage, error, dispatch]);
+  }, [successMessage, errorMessage, dispatch]);
 
-  // Avanzamento stato
+  const handlePrintFullTicket = (order: Order) => {
+    printFullOrderTicket(order);
+  };
+
+  const handleDeleteSingleOrder = (orderId: number) => {
+    dispatch(deleteOrdersThunk(orderId));
+  };
+
   const handleNextStatus = (orderId: number, currentStatus: OrderStatus) => {
     const statusFlow: Record<OrderStatus, OrderStatus | null> = {
       PENDING: "PREPARATION",
@@ -54,23 +80,39 @@ export const OrdersListPage: React.FC = () => {
       READY: "SERVED",
       SERVED: "COMPLETED",
       COMPLETED: null,
+      CANCELLED: null,
     };
 
     const nextStatus = statusFlow[currentStatus];
     if (nextStatus) {
-      dispatch(updateOrderStatusThunk({ orderId, status: nextStatus }));
+      if (
+        currentStatus === "SERVED" &&
+        nextStatus === "COMPLETED" &&
+        autoPrintOnComplete
+      ) {
+        const orderToPrint = orders.find((o) => o.id === orderId);
+        if (orderToPrint) {
+          handlePrintFullTicket(orderToPrint);
+        }
+      }
+
+      dispatch(
+        updateOrderStatusThunk({
+          orderId,
+          data: { orderStatus: nextStatus },
+        }),
+      );
     }
   };
 
-  // Handler per la CANCELLAZIONE della comanda
   const handleCancelOrder = async (
     orderId: number,
     tableNumber?: number | string | null,
     orderType: string = "TAVOLO",
   ) => {
-    const result = await dispatch(deleteOrderThunk(orderId));
+    const result = await dispatch(deleteOrdersThunk(orderId));
 
-    if (deleteOrderThunk.fulfilled.match(result)) {
+    if (deleteOrdersThunk.fulfilled.match(result)) {
       printCancellationTicket({
         orderId,
         tableNumber,
@@ -83,43 +125,17 @@ export const OrdersListPage: React.FC = () => {
     }
   };
 
-  // Handler per l'AGGIUNTA piatti a comanda esistente
-  const handleAppendToOrder = async (
-    orderId: number,
-    newOrderItems: OrderItem[],
-    tableNumber: string,
-    orderType: OrderType,
-  ) => {
-    const payload = {
-      items: newOrderItems.map((item) => ({
-        productId: item.productId,
-        quantity: item.quantity,
-        notes: item.notes || undefined,
-      })),
-    };
-
-    const result = await dispatch(
-      appendItemsThunk({ orderId, items: payload.items }),
-    );
-
-    if (appendItemsThunk.fulfilled.match(result)) {
-      const tickets = splitItemsByDestination(
-        newOrderItems,
-        tableNumber,
-        orderType,
-        true,
-        "INTEGRAZIONE COMANDA",
-      );
-      printTickets(tickets);
-    }
+  const handleConfirmDeleteCompleted = () => {
+    dispatch(deleteCompletedOrdersThunk());
+    setShowBulkDeleteModal(false);
   };
 
-  // Filtri gruppi di ordini
   const {
     pendingOrders,
     preparationOrders,
     readyOrders,
     specificFilteredOrders,
+    completedCount,
   } = useMemo(() => {
     return {
       pendingOrders: orders.filter((o) => o.orderStatus === "PENDING"),
@@ -128,18 +144,43 @@ export const OrdersListPage: React.FC = () => {
       specificFilteredOrders: orders.filter(
         (o) => o.orderStatus === selectedStatus,
       ),
+      completedCount: orders.filter((o) => o.orderStatus === "COMPLETED")
+        .length,
     };
   }, [orders, selectedStatus]);
 
   return (
     <Container fluid className="py-4 bg-dark text-white min-vh-100">
-      <OrderFilterHeader
-        selectedStatus={selectedStatus}
-        onStatusChange={setSelectedStatus}
-      />
+      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <OrderFilterHeader
+          selectedStatus={selectedStatus}
+          onStatusChange={setSelectedStatus}
+        />
+
+        <div className="d-flex align-items-center gap-3">
+          <Form.Check
+            type="switch"
+            id="auto-print-switch"
+            label="Stampa automatica all'incasso"
+            checked={autoPrintOnComplete}
+            onChange={handleToggleAutoPrint}
+            className="text-light fw-semibold"
+          />
+
+          {completedCount > 0 && (
+            <Button
+              variant="outline-danger"
+              size="sm"
+              onClick={() => setShowBulkDeleteModal(true)}
+            >
+              Pulisci Completati ({completedCount})
+            </Button>
+          )}
+        </div>
+      </div>
 
       {successMessage && <Alert variant="success">{successMessage}</Alert>}
-      {error && <Alert variant="danger">{error}</Alert>}
+      {errorMessage && <Alert variant="danger">{errorMessage}</Alert>}
 
       {loading && orders.length === 0 ? (
         <div className="text-center py-5">
@@ -154,6 +195,8 @@ export const OrdersListPage: React.FC = () => {
             emptyMessage="Nessuna comanda in attesa."
             onNextStatus={handleNextStatus}
             onCancelOrder={handleCancelOrder}
+            onPrintTicket={handlePrintFullTicket}
+            onDeleteSingleOrder={handleDeleteSingleOrder}
           />
           <AttiviColumn
             title="In Preparazione"
@@ -162,6 +205,8 @@ export const OrdersListPage: React.FC = () => {
             emptyMessage="Nessun ordine in cucina."
             onNextStatus={handleNextStatus}
             onCancelOrder={handleCancelOrder}
+            onPrintTicket={handlePrintFullTicket}
+            onDeleteSingleOrder={handleDeleteSingleOrder}
           />
           <AttiviColumn
             title="Pronti per la Sala"
@@ -170,6 +215,8 @@ export const OrdersListPage: React.FC = () => {
             emptyMessage="Nessun ordine in attesa di uscita."
             onNextStatus={handleNextStatus}
             onCancelOrder={handleCancelOrder}
+            onPrintTicket={handlePrintFullTicket}
+            onDeleteSingleOrder={handleDeleteSingleOrder}
           />
         </Row>
       ) : (
@@ -185,12 +232,23 @@ export const OrdersListPage: React.FC = () => {
                   order={order}
                   onNextStatus={handleNextStatus}
                   onCancelOrder={handleCancelOrder}
+                  onPrintTicket={handlePrintFullTicket}
+                  onDeleteSingleOrder={handleDeleteSingleOrder}
                 />
               </Col>
             ))
           )}
         </Row>
       )}
+
+      <ConfirmDeleteModal
+        show={showBulkDeleteModal}
+        title="Conferma Eliminazione di Massa"
+        message={`Sei sicuro di voler eliminare tutti gli ordini completati (${completedCount})?`}
+        confirmButtonText="Elimina Tutti i Completati"
+        onHide={() => setShowBulkDeleteModal(false)}
+        onConfirm={handleConfirmDeleteCompleted}
+      />
     </Container>
   );
 };

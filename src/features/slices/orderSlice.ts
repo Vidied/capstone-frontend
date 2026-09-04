@@ -1,251 +1,243 @@
-import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { AxiosError } from "axios";
+import {
+  createAsyncThunk,
+  createSlice,
+  type PayloadAction,
+} from "@reduxjs/toolkit";
 import API from "../../api/axiosConfig";
 import type {
+  AppendItemsDTO,
   Order,
   OrderRequestDTO,
-  OrderStatus,
   UpdateOrderStatusDTO,
 } from "../../interfaces/Order";
+import { extractErrorMessage } from "../../utils/errorUtils";
 
 interface OrderState {
   orders: Order[];
-  loading: boolean;
-  error: string | null;
-  successMessage: string | null;
   isSubmitting: boolean;
+  loading: boolean;
+  successMessage: string | null;
   errorMessage: string | null;
 }
 
 const initialState: OrderState = {
   orders: [],
-  loading: false,
-  error: null,
-  successMessage: null,
   isSubmitting: false,
+  loading: false,
+  successMessage: null,
   errorMessage: null,
 };
 
-export const createOrderThunk = createAsyncThunk<
-  Order,
-  OrderRequestDTO,
-  { rejectValue: string }
->("order/createOrder", async (orderPayload, { rejectWithValue }) => {
-  try {
-    const response = await API.post<Order>("/orders", orderPayload);
-    return response.data;
-  } catch (err) {
-    if (err instanceof AxiosError) {
-      const backendMessage =
-        typeof err.response?.data === "string"
-          ? err.response.data
-          : err.response?.data?.message;
-      return rejectWithValue(backendMessage || "Impossibile inviare l'ordine");
-    }
-    return rejectWithValue("Errore di connessione al server");
-  }
-});
-
-export const updateOrderThunk = createAsyncThunk<
-  Order,
-  { orderId: number; orderPayload: OrderRequestDTO },
-  { rejectValue: string }
->(
-  "order/updateOrder",
-  async ({ orderId, orderPayload }, { rejectWithValue }) => {
-    try {
-      const response = await API.put<Order>(`/orders/${orderId}`, orderPayload);
-      return response.data;
-    } catch (err) {
-      if (err instanceof AxiosError) {
-        const backendMessage =
-          typeof err.response?.data === "string"
-            ? err.response.data
-            : err.response?.data?.message;
-        return rejectWithValue(
-          backendMessage || "Impossibile modificare l'ordine",
-        );
-      }
-      return rejectWithValue("Errore di connessione al server");
-    }
-  },
-);
-
-// Thunk per aggiungere prodotti a un ordine esistente
-export const appendItemsThunk = createAsyncThunk<
-  Order,
-  {
-    orderId: number;
-    items: { productId: number; quantity: number; notes?: string }[];
-  },
-  { rejectValue: string }
->("order/appendItems", async ({ orderId, items }, { rejectWithValue }) => {
-  try {
-    const response = await API.post<Order>(`/orders/${orderId}/items`, {
-      items,
-    });
-    return response.data;
-  } catch (err) {
-    if (err instanceof AxiosError) {
-      const backendMessage =
-        typeof err.response?.data === "string"
-          ? err.response.data
-          : err.response?.data?.message;
-      return rejectWithValue(
-        backendMessage || "Impossibile aggiungere elementi all'ordine",
-      );
-    }
-    return rejectWithValue("Errore di connessione al server");
-  }
-});
-
-// Thunk per cancellare un ordine
-export const deleteOrderThunk = createAsyncThunk<
-  number,
-  number,
-  { rejectValue: string }
->("order/deleteOrder", async (orderId, { rejectWithValue }) => {
-  try {
-    await API.delete(`/orders/${orderId}`);
-    return orderId;
-  } catch (err) {
-    if (err instanceof AxiosError) {
-      const backendMessage =
-        typeof err.response?.data === "string"
-          ? err.response.data
-          : err.response?.data?.message;
-      return rejectWithValue(
-        backendMessage || "Impossibile cancellare l'ordine",
-      );
-    }
-    return rejectWithValue("Errore di connessione al server");
-  }
-});
-
-export const updateOrderStatusThunk = createAsyncThunk<
-  Order,
-  { orderId: number; status: OrderStatus },
-  { rejectValue: string }
->(
-  "order/updateOrderStatus",
-  async ({ orderId, status }, { rejectWithValue }) => {
-    try {
-      const payload: UpdateOrderStatusDTO = { orderStatus: status };
-      const response = await API.patch<Order>(
-        `/orders/${orderId}/status`,
-        payload,
-      );
-      return response.data;
-    } catch (err) {
-      if (err instanceof AxiosError) {
-        const backendMessage =
-          typeof err.response?.data === "string"
-            ? err.response.data
-            : err.response?.data?.message;
-        return rejectWithValue(
-          backendMessage || "Impossibile aggiornare lo stato dell'ordine",
-        );
-      }
-      return rejectWithValue("Errore di connessione al server");
-    }
-  },
-);
-
-export const fetchOrderThunk = createAsyncThunk<
+// Fetch di tutti gli ordini
+export const fetchOrdersThunk = createAsyncThunk<
   Order[],
   void,
   { rejectValue: string }
->("order/fetchOrder", async (_, { rejectWithValue }) => {
+>("orders/fetchOrders", async (_, { rejectWithValue }) => {
   try {
     const response = await API.get<Order[]>("/orders");
     return response.data;
   } catch (err) {
-    if (err instanceof AxiosError) {
-      const backendMessage =
-        typeof err.response?.data === "string"
-          ? err.response.data
-          : err.response?.data?.message;
-      return rejectWithValue(
-        backendMessage || "Impossibile caricare gli ordini",
-      );
-    }
-    return rejectWithValue("Errore di connessione al server");
+    return rejectWithValue(
+      extractErrorMessage(err, "Errore nel caricamento degli ordini"),
+    );
   }
 });
 
-const orderSlice = createSlice({
+// Creazione di un nuovo ordine
+export const createOrderThunk = createAsyncThunk<
+  Order,
+  OrderRequestDTO,
+  { rejectValue: string }
+>("orders/createOrder", async (data, { rejectWithValue }) => {
+  try {
+    const response = await API.post<Order>("/orders", data);
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(
+      extractErrorMessage(err, "Errore durante la creazione dell'ordine"),
+    );
+  }
+});
+
+export const appendItemsThunk = createAsyncThunk<
+  Order,
+  { orderId: number } & AppendItemsDTO,
+  { rejectValue: string }
+>("orders/appendItems", async ({ orderId, items }, { rejectWithValue }) => {
+  try {
+    const response = await API.post<Order>(`/orders/${orderId}/items`, items);
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(
+      extractErrorMessage(
+        err,
+        "Errore durante l'aggiunta di elementi all'ordine",
+      ),
+    );
+  }
+});
+
+// Aggiornamento dello stato dell'ordine (es. COMPLETED, CANCELLED)
+export const updateOrderStatusThunk = createAsyncThunk<
+  Order,
+  { orderId: number; data: UpdateOrderStatusDTO },
+  { rejectValue: string }
+>("orders/updateStatus", async ({ orderId, data }, { rejectWithValue }) => {
+  try {
+    const response = await API.patch<Order>(`/orders/${orderId}/status`, data);
+    return response.data;
+  } catch (err) {
+    return rejectWithValue(
+      extractErrorMessage(
+        err,
+        "Errore durante l'aggiornamento dello stato dell'ordine",
+      ),
+    );
+  }
+});
+
+// Cancellazione/Eliminazione di un singolo ordine
+export const deleteOrdersThunk = createAsyncThunk<
+  number,
+  number,
+  { rejectValue: string }
+>("orders/deleteOrder", async (orderId, { rejectWithValue }) => {
+  try {
+    await API.delete(`/orders/${orderId}`);
+    return orderId;
+  } catch (err) {
+    return rejectWithValue(
+      extractErrorMessage(err, "Errore durante la cancellazione dell'ordine"),
+    );
+  }
+});
+
+export const deleteCompletedOrdersThunk = createAsyncThunk<
+  void,
+  void,
+  { rejectValue: string }
+>("orders/deleteCompletedOrders", async (_, { rejectWithValue }) => {
+  try {
+    await API.delete("/orders/completed/all");
+  } catch (err) {
+    return rejectWithValue(
+      extractErrorMessage(
+        err,
+        "Errore durante l'eliminazione degli ordini completati",
+      ),
+    );
+  }
+});
+
+export const orderSlice = createSlice({
   name: "orders",
   initialState,
   reducers: {
     clearOrderMessages: (state) => {
-      state.error = null;
       state.successMessage = null;
-    },
-    resetOrderState: (state) => {
-      state.loading = false;
-      state.error = null;
-      state.successMessage = null;
+      state.errorMessage = null;
     },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchOrderThunk.pending, (state) => {
-        if (state.orders.length === 0) {
-          state.loading = true;
-        }
-        state.error = null;
+      .addCase(fetchOrdersThunk.pending, (state) => {
+        state.loading = true;
+        state.errorMessage = null;
       })
-      .addCase(fetchOrderThunk.fulfilled, (state, action) => {
+      .addCase(
+        fetchOrdersThunk.fulfilled,
+        (state, action: PayloadAction<Order[]>) => {
+          state.loading = false;
+          state.orders = action.payload;
+        },
+      )
+      .addCase(fetchOrdersThunk.rejected, (state, action) => {
         state.loading = false;
-        state.orders = action.payload;
-      })
-      .addCase(fetchOrderThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || "Errore sconosciuto";
+        state.errorMessage = action.payload || "Errore sconosciuto";
       })
       .addCase(createOrderThunk.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+        state.isSubmitting = true;
         state.successMessage = null;
+        state.errorMessage = null;
       })
-      .addCase(createOrderThunk.fulfilled, (state, action) => {
-        state.loading = false;
-        state.orders.push(action.payload);
-        state.successMessage = "Comanda inviata con successo";
-      })
+      .addCase(
+        createOrderThunk.fulfilled,
+        (state, action: PayloadAction<Order>) => {
+          state.isSubmitting = false;
+          state.orders.push(action.payload);
+          state.successMessage = "Comanda inviata con successo!";
+        },
+      )
       .addCase(createOrderThunk.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload || "Errore sconosciuto";
+        state.isSubmitting = false;
+        state.errorMessage =
+          action.payload || "Errore durante l'invio della comanda";
       })
-      .addCase(updateOrderThunk.fulfilled, (state, action) => {
-        const updatedOrder = action.payload;
-        const index = state.orders.findIndex((o) => o.id === updatedOrder.id);
-        if (index !== -1) {
-          state.orders[index] = updatedOrder;
-        }
-        state.successMessage = "Comanda modificata con successo";
+      .addCase(appendItemsThunk.pending, (state) => {
+        state.isSubmitting = true;
+        state.successMessage = null;
+        state.errorMessage = null;
       })
-      .addCase(appendItemsThunk.fulfilled, (state, action) => {
-        const updatedOrder = action.payload;
-        const index = state.orders.findIndex((o) => o.id === updatedOrder.id);
-        if (index !== -1) {
-          state.orders[index] = updatedOrder;
-        }
-        state.successMessage = "Aggiunta inviata alla cucina";
+      .addCase(
+        appendItemsThunk.fulfilled,
+        (state, action: PayloadAction<Order>) => {
+          state.isSubmitting = false;
+          const index = state.orders.findIndex(
+            (o) => o.id === action.payload.id,
+          );
+          if (index !== -1) {
+            state.orders[index] = action.payload;
+          } else {
+            state.orders.push(action.payload);
+          }
+          state.successMessage = "Prodotti aggiunti all'ordine con successo!";
+        },
+      )
+      .addCase(appendItemsThunk.rejected, (state, action) => {
+        state.isSubmitting = false;
+        state.errorMessage =
+          action.payload || "Errore nell'aggiunta di prodotti";
       })
-      .addCase(deleteOrderThunk.fulfilled, (state, action) => {
-        state.orders = state.orders.filter((o) => o.id !== action.payload);
-        state.successMessage = "Ordine cancellato";
+      .addCase(
+        updateOrderStatusThunk.fulfilled,
+        (state, action: PayloadAction<Order>) => {
+          const index = state.orders.findIndex(
+            (o) => o.id === action.payload.id,
+          );
+          if (index !== -1) {
+            state.orders[index] = action.payload;
+          }
+        },
+      )
+      .addCase(updateOrderStatusThunk.rejected, (state, action) => {
+        state.errorMessage =
+          action.payload || "Errore nell'aggiornamento dello stato";
       })
-      .addCase(updateOrderStatusThunk.fulfilled, (state, action) => {
-        const updatedOrder = action.payload;
-        const index = state.orders.findIndex((o) => o.id === updatedOrder.id);
-        if (index !== -1) {
-          state.orders[index] = updatedOrder;
-        }
+      .addCase(
+        deleteOrdersThunk.fulfilled,
+        (state, action: PayloadAction<number>) => {
+          state.orders = state.orders.filter((o) => o.id !== action.payload);
+          state.successMessage = "Ordine cancellato con successo!";
+        },
+      )
+      .addCase(deleteOrdersThunk.rejected, (state, action) => {
+        state.errorMessage =
+          action.payload || "Errore durante la cancellazione dell'ordine";
+      })
+      .addCase(deleteCompletedOrdersThunk.fulfilled, (state) => {
+        state.orders = state.orders.filter(
+          (o) => o.orderStatus !== "COMPLETED",
+        );
+        state.successMessage = "Ordini completati eliminati con successo!";
+      })
+      .addCase(deleteCompletedOrdersThunk.rejected, (state, action) => {
+        state.errorMessage =
+          action.payload ||
+          "Errore durante l'eliminazione degli ordini completati";
       });
   },
 });
 
-export const { clearOrderMessages, resetOrderState } = orderSlice.actions;
+export const { clearOrderMessages } = orderSlice.actions;
 export default orderSlice.reducer;

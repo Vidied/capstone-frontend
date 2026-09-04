@@ -3,13 +3,13 @@ import {
   createSlice,
   type PayloadAction,
 } from "@reduxjs/toolkit";
-import { AxiosError } from "axios";
 import API from "../../api/axiosConfig";
 import type { Category, CategoryRequestDTO } from "../../interfaces/Product";
+import { extractErrorMessage } from "../../utils/errorUtils";
 
 interface CategoryState {
   categories: Category[];
-  selectedCategory: number | null; //Se non viene scelto una categoria specifica allora mi ritorna tutte le categorie
+  selectedCategory: number | null;
   loading: boolean;
   error: string | null;
 }
@@ -25,18 +25,17 @@ export const fetchCategoriesThunk = createAsyncThunk<
   Category[],
   void,
   { rejectValue: string }
->("products/fetchCategories", async (_, { rejectWithValue }) => {
+>("categories/fetchCategories", async (_, { rejectWithValue }) => {
   try {
     const response = await API.get<Category[]>("/categories");
     return response.data;
   } catch (err) {
-    let errorMessage = "Categoria inesistente o errore nel caricamento";
-
-    if (err instanceof AxiosError && err.response?.data?.message) {
-      errorMessage = err.response.data.message;
-    }
-
-    return rejectWithValue(errorMessage);
+    return rejectWithValue(
+      extractErrorMessage(
+        err,
+        "Categoria inesistente o errore nel caricamento",
+      ),
+    );
   }
 });
 
@@ -49,11 +48,9 @@ export const createCategoryThunk = createAsyncThunk<
     const response = await API.post<Category>("/categories", data);
     return response.data;
   } catch (err) {
-    let errorMessage = "Errore durante la creazione della categoria";
-    if (err instanceof AxiosError && err.response?.data?.message) {
-      errorMessage = err.response.data.message;
-    }
-    return rejectWithValue(errorMessage);
+    return rejectWithValue(
+      extractErrorMessage(err, "Errore durante la creazione della categoria"),
+    );
   }
 });
 
@@ -66,11 +63,9 @@ export const deleteCategoryThunk = createAsyncThunk<
     await API.delete(`/categories/${id}`);
     return id;
   } catch (err) {
-    let errorMessage = "Errore durante l'eliminazione della categoria";
-    if (err instanceof AxiosError && err.response?.data?.message) {
-      errorMessage = err.response.data.message;
-    }
-    return rejectWithValue(errorMessage);
+    return rejectWithValue(
+      extractErrorMessage(err, "Errore durante l'eliminazione della categoria"),
+    );
   }
 });
 
@@ -83,11 +78,9 @@ export const updateCategoryThunk = createAsyncThunk<
     const response = await API.put<Category>(`/categories/${id}`, data);
     return response.data;
   } catch (err) {
-    let errorMessage = "Errore durante la modifica della categoria";
-    if (err instanceof AxiosError && err.response?.data?.message) {
-      errorMessage = err.response.data.message;
-    }
-    return rejectWithValue(errorMessage);
+    return rejectWithValue(
+      extractErrorMessage(err, "Errore durante la modifica della categoria"),
+    );
   }
 });
 
@@ -119,6 +112,9 @@ export const categorySlice = createSlice({
       .addCase(createCategoryThunk.fulfilled, (state, action) => {
         state.categories.push(action.payload);
       })
+      .addCase(createCategoryThunk.rejected, (state, action) => {
+        state.error = action.payload || "Errore durante la creazione";
+      })
       .addCase(updateCategoryThunk.fulfilled, (state, action) => {
         const index = state.categories.findIndex(
           (c) => c.id === action.payload.id,
@@ -127,10 +123,16 @@ export const categorySlice = createSlice({
           state.categories[index] = action.payload;
         }
       })
+      .addCase(updateCategoryThunk.rejected, (state, action) => {
+        state.error = action.payload || "Errore durante la modifica";
+      })
       .addCase(deleteCategoryThunk.fulfilled, (state, action) => {
         state.categories = state.categories.filter(
           (c) => c.id !== action.payload,
         );
+      })
+      .addCase(deleteCategoryThunk.rejected, (state, action) => {
+        state.error = action.payload || "Errore durante l'eliminazione";
       });
   },
 });

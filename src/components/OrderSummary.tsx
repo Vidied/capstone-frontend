@@ -23,11 +23,17 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     0,
   );
 
-  //Controllo per la validità del form, in caso non sia valido il  pulsante di invio rimane disabilitato
+  // Controlli per la validità dei campi del tavolo
+  const isTableProvided = tableNumber.trim() !== "";
+  const isCoverProvided = coverCount.toString().trim() !== "";
+
+  // Il tavolo e i coperti sono entrambi obbligatori quando il tipo è TAVOLO
   const isTableValid =
     orderType === "ASPORTO" ||
-    (orderType === "TAVOLO" && tableNumber.trim() != "");
+    (orderType === "TAVOLO" && isTableProvided && isCoverProvided);
+
   const isFormValid = cart.length > 0 && isTableValid;
+
   return (
     <Card
       className="bg-dark text-white border-secondary sticky-top"
@@ -71,30 +77,39 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
             <div className="row g-2 mb-3">
               <div className="col-6">
                 <Form.Label className="small text-muted fw-semibold">
-                  N. Tavolo
+                  N. Tavolo *
                 </Form.Label>
                 <Form.Control
                   type="number"
                   placeholder="Es. 5"
                   value={tableNumber}
-                  isInvalid={orderType === "TAVOLO" && !tableNumber.trim()}
+                  isInvalid={orderType === "TAVOLO" && !isTableProvided}
                   onChange={(e) => onTableNumberChange(e.target.value)}
                   className="bg-dark text-white border-secondary"
                 />
+                <Form.Control.Feedback type="invalid">
+                  Numero tavolo obbligatorio.
+                </Form.Control.Feedback>
               </div>
+
               <div className="col-6">
                 <Form.Label className="small text-muted fw-semibold">
-                  Coperti
+                  Coperti *
                 </Form.Label>
                 <Form.Control
                   type="number"
                   placeholder="Es. 4"
                   value={coverCount}
+                  isInvalid={
+                    orderType === "TAVOLO" &&
+                    isTableProvided &&
+                    !isCoverProvided
+                  }
                   onChange={(e) => onCoverCountChange(e.target.value)}
                   className="bg-dark text-white border-secondary"
                 />
                 <Form.Control.Feedback type="invalid">
-                  Inserisci il numero del tavolo.
+                  Coperti obbligatori.
                 </Form.Control.Feedback>
               </div>
             </div>

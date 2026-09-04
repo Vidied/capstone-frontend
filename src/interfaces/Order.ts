@@ -8,7 +8,7 @@ export const ALL_ORDER_STATUSES = [
   "READY",
   "SERVED",
   "COMPLETED",
-  // "CANCELLED", commento al momento in quanto non ho ancora fatto feature specifiche a riguardo (verrà implementato in versioni future)
+  "CANCELLED",
 ] as const;
 
 export type OrderStatusAttivi = (typeof ALL_ORDER_STATUSES)[number];
@@ -40,13 +40,11 @@ export interface OrderRequestDTO {
 
 export interface OrderItem {
   id?: number;
-  productId: number;
-  productName: string;
+  productName: string | null;
   quantity: number;
-  price: number;
+  unitPrice: number;
   notes?: string;
-  destinationArea?: DestinationArea;
-  orderItemStatus?: OrderStatus;
+  destinationArea?: DestinationArea | null;
 }
 
 export interface Order {
@@ -54,15 +52,24 @@ export interface Order {
   tableNumber: number | null;
   coverCount: number | null;
   orderType: OrderType;
+  createdAt: string;
   orderStatus: OrderStatus;
   notes?: string;
   totalAmount: number;
   items: OrderItem[];
-  createdAt: string;
 }
 
 export interface UpdateOrderStatusDTO {
   orderStatus: OrderStatus;
+}
+
+export interface AppendItemsDTO {
+  items: Array<{
+    productId: number;
+    quantity: number;
+    notes?: string;
+  }>;
+  coverCount?: number | null;
 }
 
 export interface CartItem {
@@ -104,7 +111,7 @@ const BADGE_VARIANTS: Record<OrderStatus, Variant> = {
   READY: "info",
   SERVED: "secondary",
   COMPLETED: "success",
-  // CANCELLED: "danger",
+  CANCELLED: "danger",
 };
 
 export const getBadgeVariant = (status: OrderStatus): Variant => {
@@ -117,7 +124,7 @@ const NEXT_STATUS_LABELS: Record<OrderStatus, string> = {
   READY: "Segna come Servito",
   SERVED: "Incassa",
   COMPLETED: "Avanza Stato",
-  // CANCELLED: "Avanza Stato",
+  CANCELLED: "Avanza Stato",
 };
 
 export const getNextStatusLabel = (status: OrderStatus): string => {

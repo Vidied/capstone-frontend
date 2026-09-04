@@ -1,4 +1,9 @@
-import type { CartItem, DestinationArea, OrderType } from "../interfaces/Order";
+import type {
+  CartItem,
+  DestinationArea,
+  Order,
+  OrderType,
+} from "../interfaces/Order";
 
 export interface PrintedTicket {
   tableNumber: string;
@@ -10,7 +15,6 @@ export interface PrintedTicket {
   generalNotes?: string;
 }
 
-// Supporta sia CartItem (con item.product) sia oggetti piatti
 export type PrintableItem =
   | CartItem
   | {
@@ -19,6 +23,61 @@ export type PrintableItem =
       notes?: string;
       destinationArea?: DestinationArea;
     };
+
+export interface CancelTicket {
+  orderId?: number;
+  tableNumber?: number | string | null;
+  orderType: string;
+  timestamp?: string;
+}
+
+/**
+ * Escapa i caratteri HTML per evitare stringhe malformate o XSS iniettato nei ticket
+ */
+const escapeHtml = (str: string): string =>
+  str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+const printHtmlViaIframe = (htmlContent: string): void => {
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0px";
+  iframe.style.height = "0px";
+  iframe.style.border = "0";
+  iframe.style.visibility = "hidden";
+
+  document.body.appendChild(iframe);
+
+  const iframeDoc = iframe.contentWindow?.document;
+  if (iframeDoc) {
+    iframeDoc.open();
+    iframeDoc.write(htmlContent);
+    iframeDoc.close();
+
+    iframe.onload = () => {
+      setTimeout(() => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } catch (err) {
+          console.error("Errore durante la stampa:", err);
+        } finally {
+          setTimeout(() => {
+            if (document.body.contains(iframe)) {
+              document.body.removeChild(iframe);
+            }
+          }, 1000);
+        }
+      }, 100);
+    };
+  }
+};
 
 export const splitItemsByDestination = (
   items: PrintableItem[],
@@ -29,7 +88,6 @@ export const splitItemsByDestination = (
 ): PrintedTicket[] => {
   const grouped = items.reduce(
     (acc, item) => {
-      // Normalizzazione dei dati in base alla struttura dell'oggetto
       const isCartItem = "product" in item;
 
       const dest: DestinationArea = isCartItem
@@ -70,95 +128,84 @@ export const splitItemsByDestination = (
   }));
 };
 
+/**
+ * Stampa i comandi di reparto
+ */
 export const printTickets = (tickets: PrintedTicket[]) => {
-  tickets.forEach((ticket) => {
-    const printWindow = window.open("", "_blank", "width=350,height=600");
-    if (!printWindow) return;
-
-    const doc = printWindow.document;
-    doc.title = `Stampa ${ticket.destination}`;
-
-    const style = doc.createElement("style");
-    style.textContent = `
-      body { font-family: 'Courier New', Courier, monospace; width: 58mm; padding: 4px; margin: 0; color: #000; }
-      .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px; }
-      .dest { font-size: 18px; font-weight: bold; text-transform: uppercase; }
-      .info { font-size: 14px; font-weight: bold; margin-top: 2px; }
-      .notes { border: 1px solid #000; padding: 4px; font-size: 11px; margin-bottom: 6px; }
-      .item-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 14px; }
-      .item-note { font-size: 12px; font-style: italic; margin-left: 10px; margin-bottom: 4px; }
-      .footer { border-top: 1px dashed #000; margin-top: 8px; padding-top: 4px; text-align: center; font-size: 10px; }
-    `;
-    doc.head.appendChild(style);
-
-    const container = doc.createElement("div");
-
-    const itemsHtml = ticket.items
-      .map(
-        (item) => `
-        <div class="item-row">
-          <span><strong>${item.quantity}x</strong> ${item.productName}</span>
-        </div>
-        ${item.notes ? `<div class="item-note">* Note: ${item.notes}</div>` : ""}
-      `,
-      )
-      .join("");
-
-    container.innerHTML = `
-      <div class="header">
-        <div class="dest">-- ${ticket.destination} --</div>
-        <div class="info">${
-          ticket.orderType === "ASPORTO"
-            ? "ASPORTO"
-            : `TAVOLO ${ticket.tableNumber}`
-        }</div>
-        <div>Ora: ${ticket.timestamp} ${
-          ticket.isIntegration ? " (INTEGRAZIONE)" : ""
-        }</div>
-      </div>
-      ${
-        ticket.generalNotes
-          ? `<div class="notes"><strong>Note Tavolo:</strong> ${ticket.generalNotes}</div>`
-          : ""
-      }
-      <div>${itemsHtml}</div>
-      <div class="footer">KDS Printing System</div>
-    `;
-
-    doc.body.appendChild(container);
-
+  tickets.forEach((ticket, index) => {
     setTimeout(() => {
-      printWindow.focus();
-      printWindow.print();
-      printWindow.close();
-    }, 250);
+      const itemsHtml = ticket.items
+        .map(
+          (item) => `
+          <div class="item-row">
+            <span><strong>${item.quantity}x</strong> ${escapeHtml(item.productName)}</span>
+          </div>
+          ${
+            item.notes
+              ? `<div class="item-note">* Note: ${escapeHtml(item.notes)}</div>`
+              : ""
+          }
+        `,
+        )
+        .join("");
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Stampa ${escapeHtml(ticket.destination)}</title>
+          <style>
+            @page { size: 80mm auto; margin: 0; }
+            html, body { width: 80mm; margin: 0; padding: 0; background: #fff; }
+            body { 
+              font-family: 'Courier New', Courier, monospace; 
+              font-size: 14px; 
+              line-height: 1.2; 
+              color: #000; 
+              padding: 4mm; 
+              box-sizing: border-box; 
+            }
+            * { page-break-inside: avoid; break-inside: avoid; }
+            .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 6px; margin-bottom: 6px; }
+            .dest { font-size: 20px; font-weight: bold; text-transform: uppercase; }
+            .info { font-size: 16px; font-weight: bold; margin-top: 2px; }
+            .notes { border: 1px solid #000; padding: 4px; font-size: 12px; margin-bottom: 6px; }
+            .item-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 15px; }
+            .item-note { font-size: 13px; font-style: italic; margin-left: 10px; margin-bottom: 4px; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="dest">-- ${escapeHtml(ticket.destination)} --</div>
+            <div class="info">${
+              ticket.orderType === "ASPORTO"
+                ? "ASPORTO"
+                : `TAVOLO ${escapeHtml(ticket.tableNumber)}`
+            }</div>
+            <div>Ora: ${ticket.timestamp} ${
+              ticket.isIntegration ? " (INTEGRAZIONE)" : ""
+            }</div>
+          </div>
+          ${
+            ticket.generalNotes
+              ? `<div class="notes"><strong>Note Tavolo:</strong> ${escapeHtml(ticket.generalNotes)}</div>`
+              : ""
+          }
+          <div>${itemsHtml}</div>
+        </body>
+        </html>
+      `;
+
+      printHtmlViaIframe(html);
+    }, index * 300);
   });
 };
 
-export interface CancelTicket {
-  orderId?: number;
-  tableNumber?: number | string | null;
-  orderType: string;
-  timestamp?: string;
-}
-
+/**
+ * Stampa il biglietto di cancellazione dell'ordine
+ */
 export const printCancellationTicket = (ticket: CancelTicket) => {
-  const printWindow = window.open("", "_blank", "width=300,height=400");
-  if (!printWindow) return;
-
-  const doc = printWindow.document;
-  doc.title = "Stampa Cancellazione";
-
-  const style = doc.createElement("style");
-  style.textContent = `
-    body { font-family: monospace; width: 58mm; padding: 5px; margin: 0; text-align: center; }
-    .title { font-size: 16pt; font-weight: bold; }
-    .status { font-size: 14pt; font-weight: bold; border: 2px solid black; margin: 8px 0; padding: 4px; }
-    .info { font-size: 12pt; margin: 4px 0; }
-  `;
-  doc.head.appendChild(style);
-
-  const container = doc.createElement("div");
   const timeString =
     ticket.timestamp ||
     new Intl.DateTimeFormat("it-IT", {
@@ -167,21 +214,221 @@ export const printCancellationTicket = (ticket: CancelTicket) => {
       second: "2-digit",
     }).format(new Date());
 
-  container.innerHTML = `
-    <div class="title">COMANDA CANCELLATA</div>
-    <div class="status">*** ANNULLATO ***</div>
-    <div class="info">
-      ${ticket.orderType === "TAVOLO" && ticket.tableNumber ? `<strong>TAVOLO: ${ticket.tableNumber}</strong>` : `<strong>ASPORTO</strong>`}
-    </div>
-    ${ticket.orderId ? `<div class="info">Ordine #${ticket.orderId}</div>` : ""}
-    <div class="info">${timeString}</div>
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Stampa Cancellazione</title>
+      <style>
+        @page { size: 80mm auto; margin: 0; }
+        html, body { width: 80mm; margin: 0; padding: 0; background: #fff; }
+        body { 
+          font-family: 'Courier New', Courier, monospace; 
+          padding: 4mm; 
+          margin: 0 auto; 
+          text-align: center; 
+          color: #000; 
+          box-sizing: border-box; 
+        }
+        * { page-break-inside: avoid; break-inside: avoid; }
+        .title { font-size: 18pt; font-weight: bold; }
+        .status { font-size: 16pt; font-weight: bold; border: 2px solid black; margin: 8px 0; padding: 4px; }
+        .info { font-size: 14pt; margin: 4px 0; }
+      </style>
+    </head>
+    <body>
+      <div class="title">COMANDA CANCELLATA</div>
+      <div class="status">*** ANNULLATO ***</div>
+      <div class="info">
+        ${
+          ticket.orderType === "TAVOLO" && ticket.tableNumber
+            ? `<strong>TAVOLO: ${escapeHtml(String(ticket.tableNumber))}</strong>`
+            : `<strong>ASPORTO</strong>`
+        }
+      </div>
+      ${ticket.orderId ? `<div class="info">Ordine #${ticket.orderId}</div>` : ""}
+      <div class="info">${timeString}</div>
+    </body>
+    </html>
   `;
 
-  doc.body.appendChild(container);
+  printHtmlViaIframe(html);
+};
 
-  setTimeout(() => {
-    printWindow.focus();
-    printWindow.print();
-    printWindow.close();
-  }, 250);
+/**
+ * Stampa la ricevuta/scontrino completo dell'ordine
+ */
+export const printFullOrderTicket = (order: Order): void => {
+  const isTable =
+    order.orderType === "TAVOLO" ||
+    (order.tableNumber !== null && order.tableNumber !== undefined);
+
+  const formattedDate = order.createdAt
+    ? new Date(order.createdAt).toLocaleString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : new Date().toLocaleString("it-IT", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="it">
+    <head>
+      <meta charset="UTF-8">
+      <title>Stampa Ricevuta #${order.id}</title>
+      <style>
+        @page {
+          size: 80mm auto;
+          margin: 0;
+        }
+        html, body {
+          width: 80mm;
+          margin: 0;
+          padding: 0;
+          background: #fff;
+        }
+        body {
+          font-family: 'Courier New', Courier, monospace;
+          padding: 4mm;
+          color: #000;
+          font-size: 13px;
+          line-height: 1.2;
+          box-sizing: border-box;
+        }
+        * {
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+        .text-center { text-align: center; }
+        .bold { font-weight: bold; }
+        .fs-title { font-size: 18px; }
+        .fs-subtitle { font-size: 15px; }
+        .divider {
+          border-top: 1px dashed #000;
+          margin: 6px 0;
+        }
+        .double-divider {
+          border-top: 2px solid #000;
+          margin: 6px 0;
+        }
+        .item-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 3px;
+        }
+        .item-name {
+          flex-grow: 1;
+          padding-right: 5px;
+        }
+        .item-price {
+          white-space: nowrap;
+        }
+        .item-note {
+          font-size: 11px;
+          padding-left: 12px;
+          font-style: italic;
+        }
+        .total-section {
+          font-size: 16px;
+          display: flex;
+          justify-content: space-between;
+          margin-top: 6px;
+        }
+        .footer {
+          margin-top: 12px;
+          font-size: 11px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="text-center bold fs-title">RICEVUTA COMANDA</div>
+      <div class="text-center fs-subtitle bold" style="margin-top: 4px;">
+        ${isTable ? `TAVOLO ${escapeHtml(String(order.tableNumber))}` : "ASPORTO"}
+      </div>
+      
+      <div class="divider"></div>
+
+      <div>
+        <div><strong>Data:</strong> ${formattedDate}</div>
+        ${
+          isTable && order.coverCount
+            ? `<div><strong>Coperti:</strong> ${order.coverCount}</div>`
+            : ""
+        }
+      </div>
+
+      <div class="double-divider"></div>
+
+      <div class="bold" style="margin-bottom: 4px; display: flex; justify-content: space-between;">
+        <span>Q.tà Descrizione</span>
+        <span>Prezzo</span>
+      </div>
+
+      <div class="divider"></div>
+
+      ${
+        order.items && order.items.length > 0
+          ? order.items
+              .map((item) => {
+                const qty = item.quantity ?? 1;
+                const unitPrice = item.unitPrice ?? 0;
+                const totalPrice = (unitPrice * qty).toFixed(2);
+                const name = item.productName || "Prodotto";
+
+                return `
+                  <div class="item-row">
+                    <span style="min-width: 22px;" class="bold">${qty}x</span>
+                    <span class="item-name">${escapeHtml(name)}</span>
+                    <span class="item-price bold">€ ${totalPrice}</span>
+                  </div>
+                  ${
+                    item.notes
+                      ? `<div class="item-note">* ${escapeHtml(item.notes)}</div>`
+                      : ""
+                  }
+                `;
+              })
+              .join("")
+          : "<div>Nessun articolo presente</div>"
+      }
+
+      <div class="double-divider"></div>
+
+      ${
+        order.notes
+          ? `
+            <div style="margin-bottom: 6px;">
+              <strong>NOTE:</strong> ${escapeHtml(order.notes)}
+            </div>
+            <div class="divider"></div>
+          `
+          : ""
+      }
+
+      <div class="total-section bold">
+        <span>TOTALE:</span>
+        <span>€ ${order.totalAmount ? order.totalAmount.toFixed(2) : "0.00"}</span>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="text-center footer">
+        Grazie e arrivederci!
+      </div>
+    </body>
+    </html>
+  `;
+
+  printHtmlViaIframe(html);
 };

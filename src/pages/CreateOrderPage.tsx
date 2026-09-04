@@ -1,18 +1,20 @@
-import React, { useEffect, useState } from "react";
-import { Alert, Card, Col, Container, Row } from "react-bootstrap";
+import React, { useEffect, useMemo, useState } from "react";
+import { Alert, Card, Col, Container, Form, Row } from "react-bootstrap";
 import { useDispatch, useSelector } from "react-redux";
+import { useDebounce } from "../app/hooks";
 import type { AppDispatch, RootState } from "../app/store";
 import { CategorySelect } from "../components/CategorySelect";
 import { OrderSummary } from "../components/OrderSummary";
 import { ProductGrid } from "../components/ProductGrid";
 import { SearchBar } from "../components/SearchBar";
 import {
+  appendItemsThunk,
   clearOrderMessages,
   createOrderThunk,
+  fetchOrdersThunk,
 } from "../features/slices/orderSlice";
 import { fetchProductsThunk } from "../features/slices/productSlice";
 import type { CartItem, OrderRequestDTO, OrderType } from "../interfaces/Order";
-import { useDebounce } from "../app/hooks";
 import type { Product } from "../interfaces/Product";
 import { printTickets, splitItemsByDestination } from "../utils/printer";
 
@@ -24,7 +26,8 @@ export const CreateOrderPage: React.FC = () => {
     loading: productsLoading,
     error: productsError,
   } = useSelector((state: RootState) => state.products);
-  const { isSubmitting, successMessage, errorMessage } = useSelector(
+
+  const { orders, isSubmitting, successMessage, errorMessage } = useSelector(
     (state: RootState) => state.orders,
   );
 
@@ -34,16 +37,53 @@ export const CreateOrderPage: React.FC = () => {
   const [coverCount, setCoverCount] = useState<string>("");
   const [generalNotes, setGeneralNotes] = useState<string>("");
 
+  const [isExtraOrder, setIsExtraOrder] = useState<boolean>(false);
+
   const [searchQuery, setSearchQuery] = useState<string>("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [selectedCategory, setSelectedCategory] = useState<string>("TUTTI");
 
   useEffect(() => {
     dispatch(fetchProductsThunk());
+    dispatch(fetchOrdersThunk());
     return () => {
       dispatch(clearOrderMessages());
     };
   }, [dispatch]);
+
+  // Cerca ordine attivo (senza CANCELLED per evitare TS2367)
+  const activeOrderForTable = useMemo(() => {
+    if (orderType !== "TAVOLO" || !tableNumber) return null;
+    const tableNum = Number(tableNumber);
+    return orders.find(
+      (o) => o.tableNumber === tableNum && o.orderStatus !== "COMPLETED",
+    );
+  }, [orders, orderType, tableNumber]);
+
+  // Gestione cambio numero di tavolo e recupero automatico coperti
+  const handleTableChange = (value: string) => {
+    setTableNumber(value);
+    const tableNum = Number(value);
+
+    const activeOrder = orders.find(
+      (o) =>
+        o.tableNumber === tableNum &&
+        o.orderStatus !== "COMPLETED" &&
+        o.orderStatus !== "CANCELLED",
+    );
+
+    if (activeOrder) {
+      setIsExtraOrder(true);
+      if (
+        activeOrder.coverCount !== null &&
+        activeOrder.coverCount !== undefined
+      ) {
+        setCoverCount(String(activeOrder.coverCount));
+      }
+    } else {
+      setIsExtraOrder(false);
+    }
+  };
 
   const availableCategories = Array.from(
     new Set(
@@ -90,11 +130,54 @@ export const CreateOrderPage: React.FC = () => {
     setCart((prevCart) => prevCart.filter((_, i) => i !== index));
   };
 
-  // Invio comanda al backend e stampa automatica dei tagliandi
+  const resetForm = () => {
+    setCart([]);
+    setTableNumber("");
+    setCoverCount("");
+    setGeneralNotes("");
+    setIsExtraOrder(false);
+  };
+
   const handleSubmitOrder = async () => {
     dispatch(clearOrderMessages());
 
     if (cart.length === 0) return;
+
+    if (isExtraOrder && activeOrderForTable) {
+      const newCoverCountNumber = coverCount ? Number(coverCount) : null;
+
+      const coverCountHasChanged =
+        activeOrderForTable.coverCount !== newCoverCountNumber;
+
+      const payloadItems = cart.map((item) => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+        notes: item.notes || undefined,
+      }));
+
+      const resultAction = await dispatch(
+        appendItemsThunk({
+          orderId: activeOrderForTable.id,
+          items: payloadItems,
+          ...(coverCountHasChanged && newCoverCountNumber !== null
+            ? { coverCount: newCoverCountNumber }
+            : {}),
+        }),
+      );
+
+      if (appendItemsThunk.fulfilled.match(resultAction)) {
+        const tickets = splitItemsByDestination(
+          cart,
+          tableNumber,
+          orderType,
+          true,
+          generalNotes,
+        );
+        printTickets(tickets);
+        resetForm();
+      }
+      return;
+    }
 
     const payload: OrderRequestDTO = {
       orderType,
@@ -113,7 +196,6 @@ export const CreateOrderPage: React.FC = () => {
     const resultAction = await dispatch(createOrderThunk(payload));
 
     if (createOrderThunk.fulfilled.match(resultAction)) {
-      // Generazione e stampa automatica delle comande per reparto
       const tickets = splitItemsByDestination(
         cart,
         tableNumber,
@@ -122,22 +204,14 @@ export const CreateOrderPage: React.FC = () => {
         generalNotes,
       );
       printTickets(tickets);
-
-      // Reset form
-      setCart([]);
-      setTableNumber("");
-      setCoverCount("");
-      setGeneralNotes("");
+      resetForm();
     }
   };
 
   const filteredProducts = products.filter((p) => {
     const query = debouncedSearchQuery.toLowerCase();
-
-    // Gestisce il nome prodotto o fallback a stringa vuota
     const productName = (p.name || "").toLowerCase();
     const matchName = productName.includes(query);
-
     const matchIngredients = p.ingredientNames?.some((ingredient) =>
       ingredient?.toLowerCase().includes(query),
     );
@@ -161,8 +235,25 @@ export const CreateOrderPage: React.FC = () => {
       {successMessage && <Alert variant="success">{successMessage}</Alert>}
       {errorMessage && <Alert variant="danger">{errorMessage}</Alert>}
 
+      {orderType === "TAVOLO" && activeOrderForTable && (
+        <Alert
+          variant="warning"
+          className="d-flex justify-content-between align-items-center mb-4"
+        >
+          <div>
+            <strong>Tavolo {tableNumber} ha già un ordine aperto!</strong>
+          </div>
+          <Form.Check
+            type="switch"
+            id="extra-order-switch"
+            label="Invia come Extra"
+            checked={isExtraOrder}
+            onChange={(e) => setIsExtraOrder(e.target.checked)}
+          />
+        </Alert>
+      )}
+
       <Row>
-        {/* Sezione Sinistra: Filtri e Catalogo Prodotti (7/12) */}
         <Col md={7} className="mb-4">
           <Card className="bg-dark text-white border-secondary mb-3">
             <Card.Body>
@@ -193,7 +284,6 @@ export const CreateOrderPage: React.FC = () => {
           />
         </Col>
 
-        {/* Sezione Destra: Carrello e Riepilogo (5/12) */}
         <Col md={5}>
           <OrderSummary
             cart={cart}
@@ -201,7 +291,7 @@ export const CreateOrderPage: React.FC = () => {
             coverCount={coverCount}
             orderType={orderType}
             generalNotes={generalNotes}
-            onTableNumberChange={setTableNumber}
+            onTableNumberChange={handleTableChange}
             onCoverCountChange={setCoverCount}
             onOrderTypeChange={setOrderType}
             onGeneralNotesChange={setGeneralNotes}

@@ -1,11 +1,7 @@
 import React from "react";
-import { Col, Badge } from "react-bootstrap";
+import { Col } from "react-bootstrap";
+import type { Order, OrderStatus } from "../interfaces/Order";
 import { OrderCard } from "./OrderCard";
-import {
-  getBadgeVariant,
-  type Order,
-  type OrderStatus,
-} from "../interfaces/Order";
 
 interface AttiviColumnProps {
   title: string;
@@ -13,42 +9,43 @@ interface AttiviColumnProps {
   status: OrderStatus;
   emptyMessage: string;
   onNextStatus: (orderId: number, currentStatus: OrderStatus) => void;
-  onCancelOrder?: (
+  onCancelOrder: (
     orderId: number,
     tableNumber?: number | string | null,
     orderType?: string,
   ) => void;
+  onPrintTicket?: (order: Order) => void;
+  onDeleteSingleOrder?: (orderId: number) => void;
 }
 
 export const AttiviColumn: React.FC<AttiviColumnProps> = ({
   title,
   orders,
-  status,
   emptyMessage,
   onNextStatus,
   onCancelOrder,
+  onPrintTicket,
+  onDeleteSingleOrder,
 }) => {
   return (
     <Col md={4}>
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h4 className="m-0 fw-bold">{title}</h4>
-        <Badge bg={getBadgeVariant(status)} text="dark">
-          {orders.length}
-        </Badge>
+      <div className="p-2 rounded bg-dark border border-secondary min-vh-100">
+        <h5 className="text-center text-light mb-3">{title}</h5>
+        {orders.length === 0 ? (
+          <p className="text-muted text-center small">{emptyMessage}</p>
+        ) : (
+          orders.map((order) => (
+            <OrderCard
+              key={order.id}
+              order={order}
+              onNextStatus={onNextStatus}
+              onCancelOrder={onCancelOrder}
+              onPrintTicket={onPrintTicket}
+              onDeleteSingleOrder={onDeleteSingleOrder}
+            />
+          ))
+        )}
       </div>
-
-      {orders.length === 0 ? (
-        <p className="text-muted italic">{emptyMessage}</p>
-      ) : (
-        orders.map((order) => (
-          <OrderCard
-            key={order.id}
-            order={order}
-            onNextStatus={onNextStatus}
-            onCancelOrder={onCancelOrder}
-          />
-        ))
-      )}
     </Col>
   );
 };

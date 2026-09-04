@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { AxiosError } from "axios";
 import API from "../../api/axiosConfig";
 import type { Product, ProductRequestDTO } from "../../interfaces/Product";
+import { extractErrorMessage } from "../../utils/errorUtils";
 
 interface ProductState {
   products: Product[];
@@ -15,11 +15,6 @@ const initialState: ProductState = {
   error: null,
 };
 
-interface ErrorResponseDTO {
-  message: string;
-  timestamp: string;
-}
-
 export const fetchProductsThunk = createAsyncThunk<
   Product[],
   void,
@@ -29,11 +24,9 @@ export const fetchProductsThunk = createAsyncThunk<
     const response = await API.get<Product[]>("/products");
     return response.data;
   } catch (err) {
-    let errorMessage = "Prodotto inesistente o errore nel caricamento";
-    if (err instanceof AxiosError && err.response?.data?.message) {
-      errorMessage = err.response.data.message;
-    }
-    return rejectWithValue(errorMessage);
+    return rejectWithValue(
+      extractErrorMessage(err, "Prodotto inesistente o errore nel caricamento"),
+    );
   }
 });
 
@@ -46,11 +39,9 @@ export const createProductThunk = createAsyncThunk<
     const response = await API.post<Product>("/products", data);
     return response.data;
   } catch (err) {
-    let errorMessage = "Errore durante la creazione del prodotto";
-    if (err instanceof AxiosError && err.response?.data?.message) {
-      errorMessage = err.response.data.message;
-    }
-    return rejectWithValue(errorMessage);
+    return rejectWithValue(
+      extractErrorMessage(err, "Errore durante la creazione del prodotto"),
+    );
   }
 });
 
@@ -63,11 +54,9 @@ export const updateProductThunk = createAsyncThunk<
     const response = await API.put<Product>(`/products/${id}`, data);
     return response.data;
   } catch (err) {
-    let errorMessage = "Errore durante la modifica del prodotto";
-    if (err instanceof AxiosError && err.response?.data?.message) {
-      errorMessage = err.response.data.message;
-    }
-    return rejectWithValue(errorMessage);
+    return rejectWithValue(
+      extractErrorMessage(err, "Errore durante la modifica del prodotto"),
+    );
   }
 });
 
@@ -80,15 +69,11 @@ export const deleteProductThunk = createAsyncThunk<
     await API.delete(`/products/${id}`);
     return id;
   } catch (err) {
-    let errorMessage = "Errore durante l'eliminazione del prodotto";
-    if (err instanceof AxiosError && err.response?.data?.message) {
-      errorMessage = err.response.data.message;
-    }
-    return rejectWithValue(errorMessage);
+    return rejectWithValue(
+      extractErrorMessage(err, "Errore durante l'eliminazione del prodotto"),
+    );
   }
 });
-
-import axios from "axios";
 
 export const toggleProductAvailabilityThunk = createAsyncThunk<
   Product,
@@ -96,17 +81,17 @@ export const toggleProductAvailabilityThunk = createAsyncThunk<
   { rejectValue: string }
 >("products/toggleAvailability", async (productId, { rejectWithValue }) => {
   try {
-    const response = await axios.patch<Product>(
+    const response = await API.patch<Product>(
       `/products/${productId}/availability`,
     );
     return response.data;
-  } catch (err: unknown) {
-    if (axios.isAxiosError<ErrorResponseDTO>(err)) {
-      if (err.response?.data?.message) {
-        return rejectWithValue(err.response.data.message);
-      }
-    }
-    return rejectWithValue("Errore di connessione o operazione non riuscita.");
+  } catch (err) {
+    return rejectWithValue(
+      extractErrorMessage(
+        err,
+        "Errore durante la modifica della disponibilità",
+      ),
+    );
   }
 });
 
@@ -135,6 +120,9 @@ export const productSlice = createSlice({
       .addCase(createProductThunk.fulfilled, (state, action) => {
         state.products.push(action.payload);
       })
+      .addCase(createProductThunk.rejected, (state, action) => {
+        state.error = action.payload || "Errore durante la creazione";
+      })
       .addCase(updateProductThunk.fulfilled, (state, action) => {
         const index = state.products.findIndex(
           (p) => p.id === action.payload.id,
@@ -143,8 +131,14 @@ export const productSlice = createSlice({
           state.products[index] = action.payload;
         }
       })
+      .addCase(updateProductThunk.rejected, (state, action) => {
+        state.error = action.payload || "Errore durante la modifica";
+      })
       .addCase(deleteProductThunk.fulfilled, (state, action) => {
         state.products = state.products.filter((p) => p.id !== action.payload);
+      })
+      .addCase(deleteProductThunk.rejected, (state, action) => {
+        state.error = action.payload || "Errore durante l'eliminazione";
       })
       .addCase(toggleProductAvailabilityThunk.fulfilled, (state, action) => {
         const index = state.products.findIndex(
@@ -153,6 +147,10 @@ export const productSlice = createSlice({
         if (index !== -1) {
           state.products[index] = action.payload;
         }
+      })
+      .addCase(toggleProductAvailabilityThunk.rejected, (state, action) => {
+        state.error =
+          action.payload || "Errore durante la modifica della disponibilità";
       });
   },
 });
